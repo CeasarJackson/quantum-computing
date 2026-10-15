@@ -1,0 +1,240 @@
+#!/usr/bin/env python3
+"""
+===============================================================================
+Project : Quantum Computing Course
+Author  : Dr. Ceasar Jackson Jr.
+File    : labs/PennyLane.py
+
+Purpose
+-------
+Train a four-qubit variational binary classifier using PennyLane's Autograd
+interface and parameter-shift differentiation. RX feature encoding, two
+trainable RY/RZ layers, CNOT entanglement, and Pauli-Z readout are used.
+Synthetic parity labels are encoded as -1/+1 for mean-squared-error training.
+An independently sampled, held-out test set reports out-of-sample accuracy.
+
+Prerequisites
+-------------
+Python 3.13, PennyLane 0.45.1, NumPy, and labs/applog.py.
+Use the project's existing .venv; no additional environment is created.
+
+Security
+--------
+No credentials, network calls, or external data. Synthetic samples only.
+Dry-run validates configuration and dependencies without training or writing
+model artifacts. Shared applog creates a timestamped log unless --help is used.
+
+Usage
+-----
+    python labs/PennyLane.py --help
+    python labs/PennyLane.py --dry-run
+    python labs/PennyLane.py --steps 50 --samples 20 --test-samples 20 --seed 42
+    python labs/PennyLane.py --steps 5 --samples 8 --verbose
+
+Log files
+---------
+logs/PennyLane/PennyLane_<YYYYmmdd_HHMMSS>.log (from project root).
+
+Exit Codes
+----------
+0   Successful training or dry-run.
+1   Dependency, training, or numerical failure.
+2   Invalid command-line argument.
+130 Interrupted by user.
+===============================================================================
+"""
+
+import argparse
+import sys
+
+import numpy as np
+
+from applog import get_logger
+
+# The circuit uses four qubits and 2 trainable rotations per qubit per layer.
+N_WIRES = 4
+N_LAYERS = 2
+N_PARAMETERS = N_WIRES * N_LAYERS * 2
+
+
+def positive_int(value):
+    """Parse a strictly positive integer for command-line arguments."""
+    try:
+        result = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be an integer") from exc
+    if result < 1:
+        raise argparse.ArgumentTypeError("must be >= 1")
+    return result
+
+
+def positive_float(value):
+    """Parse a finite, strictly positive float for command-line arguments."""
+    try:
+        result = float(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be a number") from exc
+    if not np.isfinite(result) or result <= 0:
+        raise argparse.ArgumentTypeError("must be finite and > 0")
+    return result
+
+
+def parse_args(argv=None):
+    """Return validated command-line configuration."""
+    parser = argparse.ArgumentParser(
+        description="Four-qubit PennyLane variational binary classifier"
+    )
+    parser.add_argument("--steps", type=positive_int, default=50)
+    parser.add_argument("--samples", type=positive_int, default=20)
+    parser.add_argument("--test-samples", type=positive_int, default=20)
+    parser.add_argument("--learning-rate", type=positive_float, default=0.1)
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument(
+        "--diff-method", choices=("parameter-shift", "best"),
+        default="parameter-shift",
+    )
+    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--verbose", action="store_true")
+    return parser.parse_args(argv)
+
+
+def make_dataset(samples, seed):
+    """Create reproducible RX angles and balanced-sign parity targets."""
+    rng = np.random.default_rng(seed)
+    # Each bit becomes an angle of 0 or pi; its sign is a Pauli-Z eigenvalue.
+    # The parity task is deliberately non-linear in the four input bits.
+    # The random generator is local so no global NumPy state is modified.
+    bits = rng.integers(0, 2, size=(samples, N_WIRES))
+    angles = bits.astype(float) * np.pi
+    labels = 1.0 - 2.0 * (bits.sum(axis=1) % 2)
+    return angles, labels
+
+
+def make_circuit(qml, method):
+    """Build a differentiable QNode with feature encoding and entanglement."""
+    device = qml.device("default.qubit", wires=N_WIRES)
+
+    @qml.qnode(device, interface="autograd", diff_method=method)
+    def circuit(features, weights):
+        """Encode a sample, apply trainable gates, and measure qubit zero."""
+        # RX embeds each classical input as a qubit rotation.
+        for wire in range(N_WIRES):
+            qml.RX(features[wire], wires=wire)
+        # RY and RZ are learned rotations; repeated layers add expressivity.
+        for layer in range(N_LAYERS):
+            for wire in range(N_WIRES):
+                qml.RY(weights[layer, wire, 0], wires=wire)
+                qml.RZ(weights[layer, wire, 1], wires=wire)
+            # CNOTs entangle neighboring wires, then close the four-wire ring.
+            # Entanglement lets the readout respond to multi-bit correlations.
+            for wire in range(N_WIRES - 1):
+                qml.CNOT(wires=[wire, wire + 1])
+            qml.CNOT(wires=[N_WIRES - 1, 0])
+        # Pauli-Z lies in [-1, 1], matching the encoded class targets.
+        return qml.expval(qml.PauliZ(0))
+
+    return circuit
+
+
+def loss_function(circuit, features, targets, weights, pnp):
+    """Return the mean squared error of predictions against -1/+1 labels."""
+    predictions = pnp.stack([circuit(row, weights) for row in features])
+    return pnp.mean((predictions - targets) ** 2)
+
+
+def evaluate(circuit, features, targets, weights):
+    """Return MSE and accuracy for a fixed, non-optimizing dataset."""
+    # The threshold at zero converts the Z expectation into a class sign.
+    predictions = np.asarray([float(circuit(row, weights)) for row in features])
+    if not np.all(np.isfinite(predictions)):
+        raise FloatingPointError("Non-finite circuit predictions")
+    mse = float(np.mean((predictions - targets) ** 2))
+    accuracy = float(np.mean(np.where(predictions >= 0, 1.0, -1.0) == targets))
+    return mse, accuracy
+
+
+def train(args, log):
+    """Train and evaluate a reproducible classifier with analytic gradients."""
+    import pennylane as qml
+    from pennylane import numpy as pnp
+
+    features, targets = make_dataset(args.samples, args.seed)
+    # Use a separate seed to avoid evaluating on the training examples.
+    # Duplicates are possible: four binary bits admit only 16 unique inputs.
+    test_features, test_targets = make_dataset(args.test_samples, args.seed + 2)
+    circuit = make_circuit(qml, args.diff_method)
+    rng = np.random.default_rng(args.seed + 1)
+    # Shape: (layers, qubits, [RY, RZ]); 2 * 4 * 2 = 16 parameters.
+    initial = rng.normal(0.0, 0.1, (N_LAYERS, N_WIRES, 2))
+    weights = pnp.array(initial, requires_grad=True)
+    # Parameter-shift computes analytic gate gradients via shifted circuits.
+    # Gradient descent updates only the trainable rotations, not the data.
+    optimizer = qml.GradientDescentOptimizer(stepsize=args.learning_rate)
+
+    def objective(current_weights):
+        """Expose only the differentiable weights to the optimizer."""
+        return loss_function(circuit, features, targets, current_weights, pnp)
+
+    initial_loss = float(objective(weights))
+    log.info(
+        "Train=%d; test=%d; steps=%d; parameters=%d",
+        args.samples,
+        args.test_samples,
+        args.steps,
+        N_PARAMETERS,
+    )
+    log.info("Initial MSE: %.8f", initial_loss)
+    for step in range(1, args.steps + 1):
+        weights = optimizer.step(objective, weights)
+        if args.verbose or step == 1 or step == args.steps or step % 10 == 0:
+            current_loss = float(objective(weights))
+            log.info("Step %d/%d: MSE=%.8f", step, args.steps, current_loss)
+
+    # Training metrics describe fit; test metrics describe unseen draws.
+    train_mse, train_accuracy = evaluate(circuit, features, targets, weights)
+    test_mse, test_accuracy = evaluate(
+        circuit, test_features, test_targets, weights
+    )
+    log.ok(
+        "Training complete: MSE=%.8f, accuracy=%.1f%%",
+        train_mse,
+        100.0 * train_accuracy,
+    )
+    log.ok(
+        "Held-out test: MSE=%.8f, accuracy=%.1f%%",
+        test_mse,
+        100.0 * test_accuracy,
+    )
+    log.info("Initial training MSE=%.8f; final=%.8f", initial_loss, train_mse)
+    log.warn_(
+        "Only 16 possible parity inputs; train/test feature overlap is "
+        "possible. This test is not an independent-input generalization claim."
+    )
+    return 0
+
+
+def main(argv=None):
+    """Validate the environment, then execute a dry-run or model training."""
+    args = parse_args(argv)
+    log = get_logger("PennyLane")
+    try:
+        import pennylane as qml
+
+        log.info("Python: %s", sys.version.split()[0])
+        log.info("PennyLane: %s; NumPy: %s", qml.__version__, np.__version__)
+        log.info("Differentiation: %s", args.diff_method)
+        if args.dry_run:
+            # Avoid QNode execution and optimizer updates in dry-run mode.
+            log.ok("Dry-run passed: inputs and dependencies validated")
+            return 0
+        return train(args, log)
+    except (ImportError, RuntimeError, ValueError, FloatingPointError) as exc:
+        log.fail("PennyLane classifier failed: %s", exc)
+        return 1
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main())
+    except KeyboardInterrupt:
+        sys.exit(130)

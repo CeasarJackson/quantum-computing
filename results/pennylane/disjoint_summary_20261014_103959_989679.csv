@@ -1,0 +1,9 @@
+metric,count,mean,std_sample,min,max
+quantum_train_mse,5,0.387234,0.503736,0.00658,0.94858
+quantum_train_accuracy_pct,5,83.32,22.840031,58.3,100.0
+quantum_test_mse,5,0.506615,0.665818,0.006551,1.278721
+quantum_test_accuracy_pct,5,70.0,41.079192,25.0,100.0
+majority_train_accuracy_pct,5,66.666667,0.0,66.666667,66.666667
+majority_test_accuracy_pct,5,0.0,0.0,0.0,0.0
+linear_train_accuracy_pct,5,66.666667,0.0,66.666667,66.666667
+linear_test_accuracy_pct,5,0.0,0.0,0.0,0.0

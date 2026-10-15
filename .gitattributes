@@ -1,0 +1,2 @@
+# Preserve historical experimental CSV bytes.
+*.csv -text

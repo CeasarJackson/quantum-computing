@@ -1,0 +1,4 @@
+seed,quantum_train_mse,quantum_train_accuracy_pct,quantum_test_mse,quantum_test_accuracy_pct,majority_train_accuracy_pct,majority_test_accuracy_pct,linear_train_accuracy_pct,linear_test_accuracy_pct
+42,2.15821567,41.7,0.92097131,75.0,66.666667,0.0,66.666667,0.0
+43,1.79784657,50.0,1.79674349,50.0,58.333333,25.0,58.333333,25.0
+44,1.59771521,58.3,2.87442373,25.0,50.0,50.0,75.0,25.0

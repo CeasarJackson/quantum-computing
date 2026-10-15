@@ -1,0 +1,6 @@
+seed,mode,split_seed,init_seed,quantum_train_mse,quantum_train_accuracy_pct,quantum_test_mse,quantum_test_accuracy_pct,majority_train_accuracy_pct,majority_test_accuracy_pct,linear_train_accuracy_pct,linear_test_accuracy_pct
+43,initialization,42,43,0.00960684,100.0,0.01246452,100.0,66.666667,0.0,66.666667,0.0
+44,initialization,42,44,0.00138773,100.0,0.00130603,100.0,66.666667,0.0,66.666667,0.0
+45,initialization,42,45,0.00183617,100.0,0.00217067,100.0,66.666667,0.0,66.666667,0.0
+46,initialization,42,46,0.93047185,66.7,1.38576172,50.0,66.666667,0.0,66.666667,0.0
+47,initialization,42,47,0.00101029,100.0,0.00102016,100.0,66.666667,0.0,66.666667,0.0
