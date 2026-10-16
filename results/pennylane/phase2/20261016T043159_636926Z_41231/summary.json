@@ -1,0 +1,91 @@
+{
+  "bootstrap_interpretation": "Descriptive cluster bootstrap over selected, overlapping finite-space partitions; NOT a confidence interval for new-population generalization.",
+  "configuration_count": 50,
+  "initializations_per_partition": 5,
+  "limitations": [
+    "Only 16 possible inputs; each test partition has four examples at train_unique=12.",
+    "Unique partitions can share held-out examples and are not population-independent.",
+    "Initialization repetitions within a partition are correlated by shared data.",
+    "No claim of quantum advantage or out-of-distribution generalization."
+  ],
+  "metrics": {
+    "linear_test_accuracy_pct": {
+      "max_partition_mean": 50.0,
+      "min_partition_mean": 0.0,
+      "partition_mean": 20.0,
+      "partition_sd": 22.973414586817036
+    },
+    "linear_train_accuracy_pct": {
+      "max_partition_mean": 66.66666666666666,
+      "min_partition_mean": 50.0,
+      "partition_mean": 60.83333333333333,
+      "partition_sd": 7.905694150420944
+    },
+    "majority_test_accuracy_pct": {
+      "max_partition_mean": 50.0,
+      "min_partition_mean": 0.0,
+      "partition_mean": 35.0,
+      "partition_sd": 17.480147469502526
+    },
+    "majority_train_accuracy_pct": {
+      "max_partition_mean": 66.66666666666666,
+      "min_partition_mean": 50.0,
+      "partition_mean": 55.0,
+      "partition_sd": 5.826715823167507
+    },
+    "nearest_neighbour_test_accuracy_pct": {
+      "max_partition_mean": 0.0,
+      "min_partition_mean": 0.0,
+      "partition_mean": 0.0,
+      "partition_sd": 0.0
+    },
+    "nearest_neighbour_train_accuracy_pct": {
+      "max_partition_mean": 100.0,
+      "min_partition_mean": 100.0,
+      "partition_mean": 100.0,
+      "partition_sd": 0.0
+    },
+    "polynomial_test_abstention_adjusted_pct": {
+      "max_partition_mean": 50.0,
+      "min_partition_mean": 50.0,
+      "partition_mean": 50.0,
+      "partition_sd": 0.0
+    },
+    "polynomial_train_accuracy_pct": {
+      "max_partition_mean": 100.0,
+      "min_partition_mean": 100.0,
+      "partition_mean": 100.0,
+      "partition_sd": 0.0
+    },
+    "quantum_test_accuracy_pct": {
+      "max_partition_mean": 100.0,
+      "min_partition_mean": 80.0,
+      "partition_mean": 90.0,
+      "partition_sd": 8.819171036881968
+    },
+    "quantum_test_mse": {
+      "max_partition_mean": 0.400827792,
+      "min_partition_mean": 0.000475808,
+      "partition_mean": 0.2055673016,
+      "partition_sd": 0.15573090624368105
+    },
+    "quantum_train_accuracy_pct": {
+      "max_partition_mean": 100.0,
+      "min_partition_mean": 91.66,
+      "partition_mean": 95.332,
+      "partition_sd": 4.069280034600716
+    },
+    "quantum_train_mse": {
+      "max_partition_mean": 0.192252362,
+      "min_partition_mean": 0.000389792,
+      "partition_mean": 0.1223747812,
+      "partition_sd": 0.08568745819839303
+    }
+  },
+  "polynomial_test_scoring": "Half credit for abs(score) < 1e-9 (abstention-adjusted)",
+  "quantum_test_accuracy_partition_bootstrap_percentile_interval_95": [
+    85.0,
+    95.0
+  ],
+  "unique_partition_count": 10
+}

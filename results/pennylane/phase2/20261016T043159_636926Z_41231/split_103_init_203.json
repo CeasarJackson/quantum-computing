@@ -1,0 +1,16 @@
+{
+  "init_seed": 203,
+  "linear_test_accuracy_pct": 0.0,
+  "linear_train_accuracy_pct": 66.66666666666666,
+  "majority_test_accuracy_pct": 25.0,
+  "majority_train_accuracy_pct": 58.333333333333336,
+  "nearest_neighbour_test_accuracy_pct": 0.0,
+  "nearest_neighbour_train_accuracy_pct": 100.0,
+  "polynomial_test_abstention_adjusted_pct": 50.0,
+  "polynomial_train_accuracy_pct": 100.0,
+  "quantum_test_accuracy_pct": 100.0,
+  "quantum_test_mse": 0.00577726,
+  "quantum_train_accuracy_pct": 100.0,
+  "quantum_train_mse": 0.00572166,
+  "split_seed": 103
+}

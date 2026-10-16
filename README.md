@@ -38,14 +38,14 @@ and tested on the 4 held-out inputs.
 | Phase | Design | Result |
 |---|---|---|
 | I | 5 partitions × 5 initializations, 200 steps | 23/25 configurations perfect on held-out data; mean 94.0% (SD 20.8). Both failures shared one initialization seed. |
-| II | 10 partitions × 5 initializations, 200 steps | Run in progress; results will be added here. <!-- PHASE2_RESULT --> |
+| II | 10 new partitions × 5 new initializations, 200 steps | 44/50 configurations perfect on held-out data; mean 90.0%. **Every failure was a failure to train** (58–67% training accuracy), never to generalize, and all six came from two initialization seeds. 20 configurations re-ran bit for bit. |
 
 **What this does and does not show.** There are only 16 possible inputs, so
 each test set has 4 examples and accuracy moves in 25-point steps. The
 circuit's CNOT chain is well matched to parity, so high accuracy shows a
 matched structure, **not a quantum advantage**. Full write-ups:
 [Phase I](docs/pennylane_factorial_study.md) ·
-Phase II (coming soon) <!-- PHASE2_DOC_LINK -->
+[Phase II](docs/pennylane_phase2_study.md) ([PDF](docs/pennylane_phase2_study.pdf))
 
 ## Quick start
 

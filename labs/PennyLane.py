@@ -51,7 +51,6 @@ import argparse
 import sys
 
 import numpy as np
-
 from applog import get_logger
 
 # The circuit uses four qubits and 2 trainable rotations per qubit per layer.

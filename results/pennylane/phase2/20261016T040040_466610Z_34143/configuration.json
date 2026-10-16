@@ -1,0 +1,25 @@
+{
+  "bootstrap_replicates": 200,
+  "bootstrap_seed": 20261015,
+  "created_utc": "2026-10-16T04:00:40.466988+00:00",
+  "init_seeds": [
+    200,
+    201
+  ],
+  "learning_rate": 0.1,
+  "numpy": "2.5.4",
+  "pennylane": "0.45.1",
+  "platform": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+  "python": "3.13.16 (main, Sep 30 2026, 18:57:20) [Clang 21.0.0 (clang-2100.3.34.2)]",
+  "ridge": 1.0,
+  "run_id": "20261016T040040_466610Z_34143",
+  "source_sha256": {
+    "labs/PennyLane.py": "01aca2335026ec97047095dcb4a212d9b9570f8a6dc022facff23175cbdf9589",
+    "labs/pennylane_repeated_eval.py": "a3c2781cd53de83a0df459270114829b1894c6fa7b829fdfba31be497097749d"
+  },
+  "split_seeds": [
+    100
+  ],
+  "steps": 5,
+  "train_unique": 12
+}
