@@ -38,6 +38,12 @@ for small chains.
   * s2_matrix, singlet_projector, dm_s2_verified : total-spin (S^2) symmetry
                      verification on the exact density matrix (Lab 36).
   * dm_with_errors : the exact state after chosen, deterministic Pauli errors.
+  * general_gate, aniso_steps, free_steps, general_dm_state, general_sv,
+    general_energy, train_aniso, perbond_steps, train_steps, rho_projected :
+                     ansatz families (Lab 40): bond gates exp(-i(a XX + b YY +
+                     c ZZ)) that break total spin, and symmetry-adapted ones
+                     with one angle PER BOND, plus their exact noisy state and
+                     their S_z / S^2 projections.
 
 Noise model: after each gate layer, every qubit the layer acted on suffers the
 depolarizing channel rho -> (1-p) rho + p/3 (X rho X + Y rho Y + Z rho Z).
@@ -63,6 +69,7 @@ Library module; it never exits the process.
 """
 
 import numpy as np
+from scipy.optimize import minimize
 
 from mpslib import (
     BOND,
@@ -655,3 +662,405 @@ def dm_with_errors(n, params, errors):
                 rho = dm_apply(rho, [q], PAULI[name])
                 rho = dm_apply(rho, [n + q], PAULI[name].conj())
     return rho
+
+
+def dm_damping_state(n, params, gamma, fold=1, frames=False):
+    """Exact density matrix with amplitude damping after every bond gate.
+
+    frames=False is the plain channel on both qubits of each bond (identical to
+    dm_kraus_state). frames=True averages over the Lab 34 Pauli frames
+    P (x) P around each gate, i.e. uses Kraus operators
+    (P (x) P) (K_a (x) K_b) (P (x) P) / 2.
+    """
+    psi = singlet_vector(n).reshape((2,) * n).transpose(list(range(n))[::-1])
+    rho = np.multiply.outer(psi, psi.conj())
+    ks = amplitude_damping_kraus(gamma)
+    # Four two-qubit Kraus operators: the channel acts on both qubits of the bond.
+    pair = [np.kron(a, b) for a in ks for b in ks]
+    names = FRAMES if frames else "I"
+    for parity, angle in fold_steps(layer_plan(params), fold):
+        u = bond_unitary(angle)
+        for b in group_terms(n, parity):
+            rho = dm_apply(rho, [b, b + 1], u)
+            rho = dm_apply(rho, [n + b, n + b + 1], u.conj())
+            total = 0
+            for name in names:
+                frame = np.kron(PAULI[name], PAULI[name])
+                for k in pair:
+                    kk = frame @ k @ frame / np.sqrt(len(names))
+                    term = dm_apply(rho, [b, b + 1], kk)
+                    total = total + dm_apply(term, [n + b, n + b + 1], kk.conj())
+            rho = total
+    return rho
+
+
+# ----------------------------------------------------------------------------
+# CNOT-level randomised compiling (Lab 38)
+# ----------------------------------------------------------------------------
+_CNOT01 = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]], complex)
+_CNOT10 = np.array([[1, 0, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0], [0, 1, 0, 0]], complex)
+
+
+def _local(first, second):
+    """Tensor product of two one-qubit matrices (first acts on the left qubit)."""
+    return np.kron(first, second)
+
+
+def compiled_bond_steps(angle):
+    """exp(-i angle (XX+YY+ZZ)) as three CNOTs plus one-qubit rotations.
+
+    Returns [(kind, 4x4 matrix)] in time order, kind "C" for a CNOT and "1" for
+    a layer of one-qubit gates. The construction is the three-CNOT circuit for
+    exp(-i(a XX + b YY + c ZZ)) with a = b = c = angle (up to a global phase).
+    """
+    ident = PAULI["I"]
+    half = np.pi / 2
+
+    def rz(t):
+        """Rotation about Z by angle t."""
+        return np.diag([np.exp(-1j * t / 2), np.exp(1j * t / 2)])
+
+    def ry(t):
+        """Rotation about Y by angle t."""
+        return rotation("Y", t)
+
+    # Angles of the three middle rotations (Vatan and Williams, 2004).
+    theta = -(half - 2 * angle)
+    phi = 2 * angle - half
+    psi = -(2 * angle - half)
+    return [
+        ("1", _local(ident, rz(half))),
+        ("C", _CNOT10),
+        ("1", _local(rz(theta), ry(phi))),
+        ("C", _CNOT01),
+        ("1", _local(ident, ry(psi))),
+        ("C", _CNOT10),
+        ("1", _local(rz(-half), ident)),
+    ]
+
+
+def cnot_error(zz, xi):
+    """Coherent two-qubit error after a CNOT: exp(-i zz ZZ/2) exp(-i xi X(x)I/2)."""
+    zz_op = np.kron(PAULI["Z"], PAULI["Z"])
+    xi_op = np.kron(PAULI["X"], PAULI["I"])
+    one = np.eye(4)
+    return (np.cos(zz / 2) * one - 1j * np.sin(zz / 2) * zz_op) @ (
+        np.cos(xi / 2) * one - 1j * np.sin(xi / 2) * xi_op
+    )
+
+
+def _pauli_pairs():
+    """All sixteen two-qubit Pauli matrices, as (A (x) B)."""
+    return [np.kron(PAULI[a], PAULI[b]) for a in "IXYZ" for b in "IXYZ"]
+
+
+def dm_compiled_state(n, params, zz, xi, mode="none", fold=1):
+    """Exact density matrix of the CNOT-compiled circuit with coherent errors.
+
+    mode  "none": the same error E after every CNOT, every time;
+          "sym" : Lab 34 frames P (x) P around each bond (4 frames);
+          "full": randomised compiling, a random Pauli pair around every CNOT,
+                  i.e. the error is averaged over B E B^+ for all 16 Paulis B.
+    """
+    psi = singlet_vector(n).reshape((2,) * n).transpose(list(range(n))[::-1])
+    rho = np.multiply.outer(psi, psi.conj())
+    # Same circuit for all three modes; only the random Paulis differ.
+    err = cnot_error(zz, xi)
+    pairs = _pauli_pairs()
+    frames = [np.kron(PAULI[k], PAULI[k]) for k in FRAMES]
+
+    def app(state, bond, mat):
+        """Apply a two-qubit unitary to the ket and its conjugate to the bra."""
+        state = dm_apply(state, [bond, bond + 1], mat)
+        return dm_apply(state, [n + bond, n + bond + 1], mat.conj())
+
+    # Each bond gate is expanded into its three CNOTs and the one-qubit rotations.
+    for parity, angle in fold_steps(layer_plan(params), fold):
+        steps = compiled_bond_steps(angle)
+        for b in group_terms(n, parity):
+            if mode == "sym":
+                # The exact average over the four frames, as a mixture of unitaries.
+                total = 0
+                for frame in frames:
+                    r = app(rho, b, frame)
+                    for kind, mat in steps:
+                        r = app(r, b, mat)
+                        if kind == "C":
+                            r = app(r, b, err)
+                    total = total + app(r, b, frame)
+                rho = total / len(frames)
+                continue
+            for kind, mat in steps:
+                rho = app(rho, b, mat)
+                if kind != "C":
+                    continue
+                if mode == "none":
+                    rho = app(rho, b, err)
+                else:
+                    # Conjugating E by every Pauli pair B gives a Pauli channel.
+                    total = 0
+                    for pauli in pairs:
+                        total = total + app(rho, b, pauli @ err @ pauli.conj().T)
+                    rho = total / len(pairs)
+    return rho
+
+
+def compiled_mps(n, params, chi, zz, xi, rng, mode="full", fold=1):
+    """One trajectory of the CNOT-compiled circuit with random Pauli pairs.
+
+    mode "full" draws a Pauli pair A before every CNOT and the compensating
+    B = CNOT A^+ CNOT^+ after the error, so that the ideal circuit is unchanged;
+    mode "sym" draws one P (x) P frame per bond; "none" draws nothing.
+    """
+    mps = MPS.singlet_product(n, chi)
+    # One random branch per call; averaging many calls gives the channel.
+    mps.cutoff = 1e-10
+    err = cnot_error(zz, xi)
+    pairs = _pauli_pairs()
+    frames = [np.kron(PAULI[k], PAULI[k]) for k in FRAMES]
+    for parity, angle in fold_steps(layer_plan(params), fold):
+        steps = compiled_bond_steps(angle)
+        for b in group_terms(n, parity):
+            # A fresh frame per bond and layer, including folded copies.
+            frame = frames[rng.integers(4)] if mode == "sym" else None
+            if frame is not None:
+                apply_bond_matrix(mps, b, frame)
+            for kind, mat in steps:
+                if kind == "C" and mode == "full":
+                    # A fresh random Pauli pair before every CNOT.
+                    pre = pairs[rng.integers(16)]
+                    apply_bond_matrix(mps, b, pre)
+                    apply_bond_matrix(mps, b, mat)
+                    apply_bond_matrix(mps, b, err)
+                    # Compensation: B CNOT A = CNOT, so B = CNOT A^+ CNOT^+.
+                    apply_bond_matrix(mps, b, mat @ pre.conj().T @ mat.conj().T)
+                else:
+                    apply_bond_matrix(mps, b, mat)
+                    if kind == "C":
+                        apply_bond_matrix(mps, b, err)
+            if frame is not None:
+                apply_bond_matrix(mps, b, frame)
+    return mps
+
+
+# ----------------------------------------------------------------------------
+# Total spin from product-basis measurements (Lab 39)
+# ----------------------------------------------------------------------------
+def dm_basis_probs(rho, n):
+    """Outcome probabilities of measuring every qubit in the X, Y and Z bases.
+
+    Returns {"X": p, "Y": p, "Z": p}, each an array over the 2^n bit strings in
+    site order (site 0 is the most significant bit).
+    """
+    hadamard = np.array([[1, 1], [1, -1]], dtype=complex) / np.sqrt(2)
+    # Rotations that map the X and Y eigenbases onto the computational basis.
+    to_z = {
+        "Z": np.eye(2, dtype=complex),
+        "X": hadamard,
+        "Y": hadamard @ np.diag([1, -1j]).conj().T,
+    }
+    out = {}
+    for name, rot in to_z.items():
+        state = rho
+        for q in range(n):
+            state = dm_apply(state, [q], rot)
+            state = dm_apply(state, [n + q], rot.conj())
+        diag = np.real(np.diag(state.reshape(2**n, 2**n)))
+        out[name] = diag / diag.sum()
+    return out
+
+
+def basis_shot_values(n):
+    """Per-outcome energy and S^2 contributions of one measurement setting.
+
+    For a bit string with spins s_i = +-1: the bond sum is sum s_i s_(i+1)
+    (the XX, YY or ZZ part of H) and (sum s_i)^2 / 4 is that axis' (S^a)^2.
+    Summing the three settings gives the full energy and the full S^2.
+    """
+    idx = np.arange(2**n)
+    bits = (idx[:, None] >> (n - 1 - np.arange(n))[None, :]) & 1
+    spins = 1 - 2 * bits
+    energy = (spins[:, :-1] * spins[:, 1:]).sum(axis=1).astype(float)
+    return energy, (spins.sum(axis=1) ** 2) / 4.0
+
+
+def dm_energy_and_s2(rho, n):
+    """Exact energy and <S^2> of a density matrix from the three settings."""
+    probs = dm_basis_probs(rho, n)
+    energy_vals, s2_vals = basis_shot_values(n)
+    return (
+        float(sum(probs[a] @ energy_vals for a in "XYZ")),
+        float(sum(probs[a] @ s2_vals for a in "XYZ")),
+    )
+
+
+# ----------------------------------------------------------------------------
+# Ansatz families that break the symmetry (Lab 40)
+# ----------------------------------------------------------------------------
+def general_gate(a, b, c):
+    """exp(-i (a XX + b YY + c ZZ)) as a 4x4 matrix.
+
+    The three terms commute, so the exponential is an exact product. With
+    a = b = c this is `bond_unitary(a)`, which conserves total spin. Any other
+    choice breaks S^2; a != b also breaks S_z.
+    """
+    out = np.eye(4, dtype=complex)
+    for angle, name in ((a, "X"), (b, "Y"), (c, "Z")):
+        pp = np.kron(PAULI[name], PAULI[name])
+        out = out @ (np.cos(angle) * np.eye(4) - 1j * np.sin(angle) * pp)
+    return out
+
+
+def aniso_steps(angles, xi=0.0, zeta=0.0):
+    """HVA angles as (parity, (a, b, c)) steps with a controlled anisotropy.
+
+    xi   : XY anisotropy, a = t (1 + xi), b = t (1 - xi); breaks S_z and S^2.
+    zeta : ZZ anisotropy, c = t (1 + zeta); keeps S_z, breaks S^2.
+    With xi = zeta = 0 the circuit is the ordinary HVA of Labs 28-39.
+    """
+    return [
+        (parity, (t * (1 + xi), t * (1 - xi), t * (1 + zeta)))
+        for parity, t in layer_plan(angles)
+    ]
+
+
+def free_steps(x):
+    """Steps from a flat vector holding three free angles per half layer."""
+    rows = np.asarray(x, dtype=float).reshape(-1, 3)
+    # Same order as layer_plan: the odd group first, then the even group.
+    return [(1 - k % 2, tuple(row)) for k, row in enumerate(rows)]
+
+
+def _fold_general(steps, fold):
+    """Repeat each step as U (U^dagger U)^k; U^dagger flips all three angles."""
+    if fold < 1 or fold % 2 == 0:
+        raise ValueError(f"fold factor must be a positive odd integer, got {fold}")
+    out = []
+    for parity, abc in steps:
+        for k in range(fold):
+            sign = 1.0 if k % 2 == 0 else -1.0
+            out.append((parity, sign * np.asarray(abc, dtype=float)))
+    return out
+
+
+def _site_order_singlets(n):
+    """The singlet-product start state as a tensor with one axis per site."""
+    psi = singlet_vector(n).reshape((2,) * n)
+    # singlet_vector is little endian; flip the axes to site order.
+    return psi.transpose(list(range(n))[::-1])
+
+
+def _step_gates(n, parity, abc):
+    """The 4x4 gate of every bond in one group.
+
+    `abc` is either one (a, b, c) triple shared by all bonds, or a list with
+    one triple per bond (the per-bond ansatz).
+    """
+    count = len(group_terms(n, parity))
+    arr = np.asarray(abc, dtype=float)
+    if arr.ndim == 1:
+        return [general_gate(*arr)] * count
+    if len(arr) != count:
+        raise ValueError(f"expected {count} bond triples, got {len(arr)}")
+    return [general_gate(*row) for row in arr]
+
+
+def general_sv(n, steps):
+    """Pure state after the noiseless circuit, as a tensor (one axis per site)."""
+    psi = _site_order_singlets(n)
+    for parity, abc in steps:
+        for b, u in zip(group_terms(n, parity), _step_gates(n, parity, abc)):
+            psi = dm_apply(psi, [b, b + 1], u)
+    return psi
+
+
+def general_energy(n, steps):
+    """Noiseless energy <H> of the circuit, from the state tensor."""
+    psi = general_sv(n, steps)
+    total = 0.0
+    for b in range(n - 1):
+        total += np.vdot(psi, dm_apply(psi, [b, b + 1], BOND)).real
+    return float(total)
+
+
+def general_dm_state(n, steps, p, fold=1, weights=None):
+    """Density matrix after the noisy circuit for any (a, b, c) steps.
+
+    Same channel as `dm_state`: depolarizing (relative X, Y, Z weights) on every
+    qubit a gate layer touched. With a = b = c it reproduces `dm_state`.
+    """
+    w = np.ones(3) if weights is None else np.asarray(weights, dtype=float)
+    w = w / w.sum()
+    psi = _site_order_singlets(n)
+    rho = np.multiply.outer(psi, psi.conj())
+    for parity, abc in _fold_general(steps, fold):
+        for b, u in zip(group_terms(n, parity), _step_gates(n, parity, abc)):
+            rho = dm_apply(rho, [b, b + 1], u)
+            rho = dm_apply(rho, [n + b, n + b + 1], u.conj())
+        for q in touched_qubits(n, parity):
+            mixed = (1 - p) * rho
+            for name, weight in zip("XYZ", w):
+                s = dm_apply(rho, [q], PAULI[name])
+                s = dm_apply(s, [n + q], PAULI[name].conj())
+                mixed = mixed + (p * weight) * s
+            rho = mixed
+    return rho
+
+
+def perbond_steps(n, x):
+    """Symmetry-adapted steps with ONE ANGLE PER BOND (a = b = c on each bond).
+
+    `x` lists the bond angles group by group in circuit order (odd group first,
+    then even, repeated per layer). Every gate is exp(-i t (XX + YY + ZZ)), so
+    total spin is conserved exactly however the angles differ.
+    """
+    steps, i = [], 0
+    while i < len(x):
+        parity = 1 - len(steps) % 2
+        count = len(group_terms(n, parity))
+        steps.append((parity, [(t, t, t) for t in x[i : i + count]]))
+        i += count
+    return steps
+
+
+def perbond_from_hva(n, angles):
+    """Per-bond angles equal to an ordinary HVA's one angle per group."""
+    out = []
+    for parity, t in layer_plan(angles):
+        out += [t] * len(group_terms(n, parity))
+    return np.array(out)
+
+
+def train_steps(n, x0, build):
+    """Minimize the noiseless energy of build(x) by L-BFGS from x0."""
+    res = minimize(
+        lambda x: general_energy(n, build(x)),
+        np.asarray(x0, dtype=float),
+        method="L-BFGS-B",
+        options={"maxiter": 1000, "ftol": 1e-14, "gtol": 1e-10},
+    )
+    return res.x, float(res.fun)
+
+
+def train_aniso(n, x0, xi, zeta):
+    """Retrain the half-layer angles at fixed anisotropy; return (angles, E)."""
+    return train_steps(n, x0, lambda x: aniso_steps(x, xi, zeta))
+
+
+def rho_projected(rho, n, kind, proj=None):
+    """Energy and acceptance of rho after projecting onto S_z = 0 or S = 0.
+
+    kind is "Sz" or "S2". `rho` is the tensor from `general_dm_state` or
+    `dm_state`. Returns (energy of the projected state, probability to pass).
+    """
+    mat = rho.reshape(2**n, 2**n)
+    if kind == "S2":
+        pr = singlet_projector(n) if proj is None else proj
+        mat0 = pr @ mat @ pr
+    else:
+        # Site order: bit 1 is spin down, so S_z = 0 means n/2 ones.
+        bits = (np.arange(2**n)[:, None] >> np.arange(n)[None, :]) & 1
+        keep = (bits.sum(axis=1) == n // 2).astype(float)
+        mat0 = mat * keep[:, None] * keep[None, :]
+    acceptance = float(np.trace(mat0).real)
+    return dm_expectation(mat0.reshape((2,) * (2 * n)), n) / acceptance, acceptance

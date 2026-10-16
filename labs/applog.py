@@ -35,17 +35,17 @@ import logging
 import os
 import sys
 from datetime import datetime
+from typing import ClassVar, cast
 
-# ESC is built at runtime so this source file stays plain ASCII.
+# Build ANSI escapes at runtime to keep the source plain ASCII.
 ESC = chr(27)
-RESET, BOLD = ESC + "[0m", ESC + "[1m"
-BLUE, GREEN, YELLOW, RED, CYAN = (
-    ESC + "[34m",
-    ESC + "[32m",
-    ESC + "[33m",
-    ESC + "[31m",
-    ESC + "[36m",
-)
+RESET = ESC + "[0m"
+BOLD = ESC + "[1m"
+DIM = ESC + "[2m"
+GREEN = ESC + "[32m"
+YELLOW = ESC + "[33m"
+RED = ESC + "[31m"
+CYAN = ESC + "[36m"
 
 # PASS sits between INFO (20) and WARNING (30).
 PASS_LEVEL = 25
@@ -55,12 +55,13 @@ logging.addLevelName(PASS_LEVEL, "PASS")
 class ColorFormatter(logging.Formatter):
     """Color only the level name; message text stays uncolored."""
 
-    COLORS = {
-        logging.DEBUG: BLUE,
+    COLORS: ClassVar[dict[int, str]] = {
+        logging.DEBUG: DIM,
         logging.INFO: CYAN,
         PASS_LEVEL: GREEN,
         logging.WARNING: YELLOW,
         logging.ERROR: RED,
+        logging.CRITICAL: RED,
     }
 
     def format(self, record):
@@ -68,7 +69,11 @@ class ColorFormatter(logging.Formatter):
         # Remember the plain name first; we mutate the shared record below.
         original = record.levelname
         color = self.COLORS.get(record.levelno, "")
-        record.levelname = f"{BOLD}{color}{original:<5}{RESET}"
+        if color:
+            emphasis = "" if record.levelno == logging.DEBUG else BOLD
+            record.levelname = f"{emphasis}{color}{original:<5}{RESET}"
+        else:
+            record.levelname = f"{original:<5}"
         try:
             return super().format(record)
         finally:
@@ -76,9 +81,39 @@ class ColorFormatter(logging.Formatter):
             record.levelname = original
 
 
-def get_logger(name):
+class LabLogger(logging.Logger):
+    """Logger carrying the house vocabulary (PASS/WARN/FAIL) as real methods.
+
+    Declaring them on a subclass, rather than attaching lambdas at runtime,
+    lets type checkers (Pylance/mypy) see .ok/.warn_/.fail on every caller.
+    stacklevel=2 keeps %(funcName)s/%(lineno)d pointing at the caller.
+    """
+
+    def ok(self, msg, *args, **kwargs):
+        """Log at PASS (25)."""
+        kwargs.setdefault("stacklevel", 2)
+        self.log(PASS_LEVEL, msg, *args, **kwargs)
+
+    def warn_(self, msg, *args, **kwargs):
+        """Log at WARNING; trailing underscore avoids shadowing Logger.warn."""
+        kwargs.setdefault("stacklevel", 2)
+        self.warning(msg, *args, **kwargs)
+
+    def fail(self, msg, *args, **kwargs):
+        """Log at ERROR."""
+        kwargs.setdefault("stacklevel", 2)
+        self.error(msg, *args, **kwargs)
+
+
+def get_logger(name) -> LabLogger:
     """Return a logger with .ok() (PASS), .warn_() and .fail() helpers."""
     log = logging.getLogger(name)
+    # Swap the class on this one logger instead of calling the global
+    # logging.setLoggerClass, which would also change third-party loggers
+    # (PennyLane, Qiskit). Safe because LabLogger adds methods, not state.
+    if not isinstance(log, LabLogger):
+        log.__class__ = LabLogger
+    log = cast(LabLogger, log)
     # DEBUG at the logger lets each handler decide what to show; clearing
     # handlers makes repeated calls (and re-imports) idempotent.
     log.setLevel(logging.DEBUG)
@@ -86,7 +121,11 @@ def get_logger(name):
     fmt = "%(asctime)s [%(levelname)s] %(message)s"
 
     console = logging.StreamHandler(sys.stdout)
-    color = sys.stdout.isatty() and "NO_COLOR" not in os.environ
+    color = (
+        sys.stdout.isatty()
+        and os.environ.get("TERM", "") != "dumb"
+        and "NO_COLOR" not in os.environ
+    )
     console.setFormatter(
         (ColorFormatter if color else logging.Formatter)(fmt, "%H:%M:%S")
     )
@@ -104,10 +143,4 @@ def get_logger(name):
         log.info("Log file: %s", path)
     except OSError as exc:
         log.warning("File logging disabled (%s); console only.", exc)
-
-    # Attach the house vocabulary (PASS/WARN/FAIL) as methods so callers
-    # never touch numeric levels directly.
-    log.ok = lambda msg, *a: log.log(PASS_LEVEL, msg, *a)
-    log.warn_ = log.warning  # trailing underscore avoids shadowing Logger.warn
-    log.fail = log.error
     return log

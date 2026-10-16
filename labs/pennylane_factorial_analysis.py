@@ -59,7 +59,6 @@ from datetime import datetime
 from pathlib import Path
 from statistics import mean, stdev
 
-
 # Resolve paths from this file so the script works from any working directory.
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -165,9 +164,7 @@ def configure_logging(log_path: Path | None) -> logging.Logger:
 
         # The file keeps DEBUG detail and never contains ANSI codes.
         file_handler.setLevel(logging.DEBUG)
-        file_handler.setFormatter(
-            ColorFormatter(enabled=False)
-        )
+        file_handler.setFormatter(ColorFormatter(enabled=False))
 
         logger.addHandler(file_handler)
 
@@ -229,9 +226,7 @@ def read_canonical_data(results_dir: Path):
 
         # Fail fast with the exact missing path rather than a vague error later.
         if not path.is_file():
-            raise FileNotFoundError(
-                f"Canonical dataset missing: {path}"
-            )
+            raise FileNotFoundError(f"Canonical dataset missing: {path}")
 
         with path.open(newline="", encoding="utf-8-sig") as handle:
             reader = csv.DictReader(handle)
@@ -244,27 +239,21 @@ def read_canonical_data(results_dir: Path):
             missing = REQUIRED_COLUMNS - set(reader.fieldnames)
 
             if missing:
-                raise ValueError(
-                    f"{path.name}: missing columns {sorted(missing)}"
-                )
+                raise ValueError(f"{path.name}: missing columns {sorted(missing)}")
 
             rows = list(reader)
 
         # Five initialization seeds per partition: any other count is a
         # truncated or appended file.
         if len(rows) != 5:
-            raise ValueError(
-                f"{path.name}: expected 5 rows; found {len(rows)}"
-            )
+            raise ValueError(f"{path.name}: expected 5 rows; found {len(rows)}")
 
         found_inits = set()
 
         for row in rows:
             # Only initialization-mode runs belong to this factorial design.
             if row["mode"] != "initialization":
-                raise ValueError(
-                    f"{path.name}: unexpected mode {row['mode']}"
-                )
+                raise ValueError(f"{path.name}: unexpected mode {row['mode']}")
 
             split = int(row["split_seed"])
             init = int(row["init_seed"])
@@ -272,20 +261,15 @@ def read_canonical_data(results_dir: Path):
             # The partition seed must match the file it is listed under.
             if split != expected_split:
                 raise ValueError(
-                    f"{path.name}: expected split "
-                    f"{expected_split}; found {split}"
+                    f"{path.name}: expected split " f"{expected_split}; found {split}"
                 )
 
             if init not in EXPECTED_INITS:
-                raise ValueError(
-                    f"{path.name}: unexpected init seed {init}"
-                )
+                raise ValueError(f"{path.name}: unexpected init seed {init}")
 
             # A repeated init seed would double-count one cell of the grid.
             if init in found_inits:
-                raise ValueError(
-                    f"{path.name}: duplicate init seed {init}"
-                )
+                raise ValueError(f"{path.name}: duplicate init seed {init}")
 
             found_inits.add(init)
 
@@ -293,9 +277,7 @@ def read_canonical_data(results_dir: Path):
 
             # The same cell appearing in two files would bias the statistics.
             if key in records:
-                raise ValueError(
-                    f"Duplicate canonical configuration: {key}"
-                )
+                raise ValueError(f"Duplicate canonical configuration: {key}")
 
             # Reject NaN/inf and out-of-range values before they reach the
             # statistics, where they would silently distort means.
@@ -317,20 +299,14 @@ def read_canonical_data(results_dir: Path):
                 value = float(row[field])
 
                 if not math.isfinite(value):
-                    raise ValueError(
-                        f"{key}: nonfinite value in {field}"
-                    )
+                    raise ValueError(f"{key}: nonfinite value in {field}")
 
                 # Accuracies are percentages; MSE only needs to be non-negative.
                 if field.endswith("_accuracy_pct"):
                     if not 0 <= value <= 100:
-                        raise ValueError(
-                            f"{key}: invalid accuracy {value}"
-                        )
+                        raise ValueError(f"{key}: invalid accuracy {value}")
                 elif value < 0:
-                    raise ValueError(
-                        f"{key}: negative MSE {value}"
-                    )
+                    raise ValueError(f"{key}: negative MSE {value}")
 
                 record[field] = value
 
@@ -345,9 +321,7 @@ def read_canonical_data(results_dir: Path):
                 value = float(raw)
 
                 if not math.isfinite(value) or not 0 <= value <= 100:
-                    raise ValueError(
-                        f"{key}: invalid baseline {field}"
-                    )
+                    raise ValueError(f"{key}: invalid baseline {field}")
 
                 record[field] = value
 
@@ -355,23 +329,17 @@ def read_canonical_data(results_dir: Path):
 
         # With 5 unique, in-range seeds this proves full coverage per file.
         if found_inits != EXPECTED_INITS:
-            raise ValueError(
-                f"{path.name}: incomplete initialization coverage"
-            )
+            raise ValueError(f"{path.name}: incomplete initialization coverage")
 
         source_files[expected_split] = str(path)
 
     # Final completeness check: the full 5 x 5 grid, no gaps, no extras.
     expected_keys = {
-        (split, init)
-        for split in EXPECTED_SPLITS
-        for init in EXPECTED_INITS
+        (split, init) for split in EXPECTED_SPLITS for init in EXPECTED_INITS
     }
 
     if set(records) != expected_keys:
-        raise ValueError(
-            "Canonical factorial coverage is incomplete"
-        )
+        raise ValueError("Canonical factorial coverage is incomplete")
 
     return records, source_files
 
@@ -394,10 +362,7 @@ def descriptive_stats(values):
 
 def analyze(records):
     """Summarize all configurations overall, per split and per initialization."""
-    ordered = [
-        records[key]
-        for key in sorted(records)
-    ]
+    ordered = [records[key] for key in sorted(records)]
 
     metrics = (
         "quantum_train_accuracy_pct",
@@ -408,10 +373,7 @@ def analyze(records):
 
     # Pooled statistics across all 25 configurations.
     overall = {
-        metric: descriptive_stats(
-            row[metric] for row in ordered
-        )
-        for metric in metrics
+        metric: descriptive_stats(row[metric] for row in ordered) for metric in metrics
     }
 
     # Marginal summaries: averaging over inits (per split) shows partition
@@ -420,46 +382,29 @@ def analyze(records):
     by_init = {}
 
     for split in sorted(EXPECTED_SPLITS):
-        subset = [
-            records[(split, init)]
-            for init in sorted(EXPECTED_INITS)
-        ]
+        subset = [records[(split, init)] for init in sorted(EXPECTED_INITS)]
 
         by_split[str(split)] = {
-            metric: descriptive_stats(
-                row[metric] for row in subset
-            )
+            metric: descriptive_stats(row[metric] for row in subset)
             for metric in metrics
         }
 
     for init in sorted(EXPECTED_INITS):
-        subset = [
-            records[(split, init)]
-            for split in sorted(EXPECTED_SPLITS)
-        ]
+        subset = [records[(split, init)] for split in sorted(EXPECTED_SPLITS)]
 
         by_init[str(init)] = {
-            metric: descriptive_stats(
-                row[metric] for row in subset
-            )
+            metric: descriptive_stats(row[metric] for row in subset)
             for metric in metrics
         }
 
     # Configurations below 100% held-out accuracy are reported individually.
-    failures = [
-        row for row in ordered
-        if row["quantum_test_accuracy_pct"] < 100
-    ]
+    failures = [row for row in ordered if row["quantum_test_accuracy_pct"] < 100]
 
     # Baselines are summarized only over rows that actually recorded them.
     baseline_stats = {}
 
     for field in BASELINE_COLUMNS:
-        values = [
-            row[field]
-            for row in ordered
-            if row[field] is not None
-        ]
+        values = [row[field] for row in ordered if row[field] is not None]
 
         if values:
             baseline_stats[field] = descriptive_stats(values)
@@ -484,8 +429,7 @@ def analyze(records):
         "by_initialization": by_init,
         "baselines": baseline_stats,
         "perfect_held_out_configurations": sum(
-            row["quantum_test_accuracy_pct"] == 100
-            for row in ordered
+            row["quantum_test_accuracy_pct"] == 100 for row in ordered
         ),
         "lower_performing_configurations": failures,
     }
@@ -515,10 +459,7 @@ def inspect_historical_files(results_dir: Path):
                         int(row["init_seed"]),
                     )
 
-                    if (
-                        key[0] in EXPECTED_SPLITS
-                        and key[1] in EXPECTED_INITS
-                    ):
+                    if key[0] in EXPECTED_SPLITS and key[1] in EXPECTED_INITS:
                         occurrences[key].append(path.name)
 
         except (KeyError, ValueError, UnicodeError, csv.Error):
@@ -551,9 +492,7 @@ def export_results(output_dir, records, report, duplicates):
     paths = (summary_path, data_path, duplicates_path)
 
     if any(path.exists() for path in paths):
-        raise FileExistsError(
-            "One or more output filenames already exist"
-        )
+        raise FileExistsError("One or more output filenames already exist")
 
     # Exclusive creation prevents accidental overwrite.
     with summary_path.open("x", encoding="utf-8") as handle:
@@ -589,11 +528,15 @@ def main():
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
 
     # Dry-run writes nothing, including the log file.
-    log_path = None if args.dry_run else (
-        PROJECT_ROOT
-        / "logs"
-        / "pennylane_factorial_analysis"
-        / f"analysis_{stamp}.log"
+    log_path = (
+        None
+        if args.dry_run
+        else (
+            PROJECT_ROOT
+            / "logs"
+            / "pennylane_factorial_analysis"
+            / f"analysis_{stamp}.log"
+        )
     )
 
     logger = configure_logging(log_path)
@@ -643,15 +586,12 @@ def main():
             )
 
         logger.info(
-            "Historical seed combinations with multiple "
-            "occurrences: %d",
+            "Historical seed combinations with multiple " "occurrences: %d",
             len(duplicates),
         )
 
         if args.dry_run:
-            logger.info(
-                "DRY RUN PASS: No analysis exports created"
-            )
+            logger.info("DRY RUN PASS: No analysis exports created")
             return 0
 
         paths = export_results(

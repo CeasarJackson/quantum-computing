@@ -47,9 +47,8 @@ from datetime import datetime
 from pathlib import Path
 
 import numpy as np
-
 from applog import get_logger
-from PennyLane import make_disjoint_dataset, majority_baseline
+from PennyLane import majority_baseline, make_disjoint_dataset
 
 # Parse only explicit PASS metric lines, not intermediate training progress.
 TRAIN_RE = re.compile(r"Training complete: MSE=([\d.]+), accuracy=([\d.]+)%")
@@ -211,7 +210,9 @@ def run_quantum(script, args, split_seed, init_seed):
         SPLIT_RE.search(output),
     )
     # A zero exit code alone is not enough; the metric lines must be present.
-    if result.returncode or not all((train, test, split)):
+    # Explicit `is None` checks (not all(...)) so type checkers can narrow
+    # the Optional[Match] values used below.
+    if result.returncode or train is None or test is None or split is None:
         # Show the tail of the output so the real failure is visible.
         raise RuntimeError(
             f"Split {split_seed}, init {init_seed}: classifier failed or "

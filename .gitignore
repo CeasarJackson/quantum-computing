@@ -6,3 +6,11 @@ __pycache__/
 
 # macOS metadata
 .DS_Store
+
+# Editor backups and pre-edit snapshots
+docs/_backups/
+archive/*.before_*.py
+archive/*.pre_*.py
+
+# Superseded drafts kept locally, not published
+archive/

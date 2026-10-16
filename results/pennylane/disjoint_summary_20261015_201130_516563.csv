@@ -1,0 +1,13 @@
+metric,count,mean,std_sample,min,max
+quantum_train_mse,5,0.295015,0.436541,0.000199,0.972273
+quantum_train_accuracy_pct,5,91.66,18.648807,58.3,100.0
+quantum_test_mse,5,0.35506,0.532073,0.000199,1.193993
+quantum_test_accuracy_pct,5,85.0,33.54102,25.0,100.0
+majority_train_accuracy_pct,5,50.0,0.0,50.0,50.0
+majority_test_accuracy_pct,5,50.0,0.0,50.0,50.0
+linear_train_accuracy_pct,5,50.0,0.0,50.0,50.0
+linear_test_accuracy_pct,5,50.0,0.0,50.0,50.0
+polynomial_train_accuracy_pct,5,100.0,0.0,100.0,100.0
+polynomial_test_accuracy_pct,5,50.0,0.0,50.0,50.0
+nearest_neighbour_train_accuracy_pct,5,100.0,0.0,100.0,100.0
+nearest_neighbour_test_accuracy_pct,5,0.0,0.0,0.0,0.0

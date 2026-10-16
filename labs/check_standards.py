@@ -102,9 +102,9 @@ def audit(path):
 
     # One AST walk covers two rules: docstrings on defs, and no bare print().
     for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.ClassDef)):
-            if not ast.get_docstring(node):
-                fails.append(f"line {node.lineno}: '{node.name}' lacks a docstring")
+        is_def = isinstance(node, (ast.FunctionDef, ast.ClassDef))
+        if is_def and not ast.get_docstring(node):
+            fails.append(f"line {node.lineno}: '{node.name}' lacks a docstring")
         if (
             isinstance(node, ast.Call)
             and isinstance(node.func, ast.Name)

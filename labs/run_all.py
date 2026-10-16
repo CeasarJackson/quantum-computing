@@ -74,6 +74,10 @@ SLOW = {
     "lab34_pauli_frames.py": 90,
     "lab35_probabilistic_error_cancellation.py": 90,
     "lab36_total_spin_verification.py": 90,
+    "lab37_damping_and_extrapolation.py": 90,
+    "lab38_randomised_compiling.py": 120,
+    "lab39_spin_extrapolation.py": 60,
+    "lab40_ansatz_symmetry.py": 90,
 }
 SUMMARY = re.compile(r"All (\d+) (?:check|file)")
 
