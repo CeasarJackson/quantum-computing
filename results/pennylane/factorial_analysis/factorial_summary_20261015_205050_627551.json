@@ -1,0 +1,425 @@
+{
+  "design": {
+    "partition_seeds": [
+      42,
+      43,
+      44,
+      45,
+      46
+    ],
+    "initialization_seeds": [
+      43,
+      44,
+      45,
+      46,
+      47
+    ],
+    "configurations": 25,
+    "training_examples": 12,
+    "held_out_examples": 4,
+    "optimization_steps": 200,
+    "learning_rate": 0.1,
+    "ridge_parameter": 1.0,
+    "hyperparameter_provenance": "Validated execution logs and experiment manifest; not independently encoded in detailed CSV rows."
+  },
+  "overall": {
+    "quantum_train_accuracy_pct": {
+      "count": 25,
+      "mean": 97.0,
+      "sample_sd": 10.453827050415557,
+      "minimum": 58.3,
+      "maximum": 100.0
+    },
+    "quantum_test_accuracy_pct": {
+      "count": 25,
+      "mean": 94.0,
+      "sample_sd": 20.766559657295186,
+      "minimum": 25.0,
+      "maximum": 100.0
+    },
+    "quantum_train_mse": {
+      "count": 25,
+      "mean": 0.0967085208,
+      "sample_sd": 0.27541430511585224,
+      "minimum": 0.00019922,
+      "maximum": 0.97227313
+    },
+    "quantum_test_mse": {
+      "count": 25,
+      "mean": 0.1270072428,
+      "sample_sd": 0.36876566083136225,
+      "minimum": 0.00019858,
+      "maximum": 1.37992014
+    }
+  },
+  "by_split": {
+    "42": {
+      "quantum_train_accuracy_pct": {
+        "count": 5,
+        "mean": 100.0,
+        "sample_sd": 0.0,
+        "minimum": 100.0,
+        "maximum": 100.0
+      },
+      "quantum_test_accuracy_pct": {
+        "count": 5,
+        "mean": 100.0,
+        "sample_sd": 0.0,
+        "minimum": 100.0,
+        "maximum": 100.0
+      },
+      "quantum_train_mse": {
+        "count": 5,
+        "mean": 0.0008906799999999999,
+        "sample_sd": 0.001367323211040462,
+        "minimum": 0.00020008,
+        "maximum": 0.00333121
+      },
+      "quantum_test_mse": {
+        "count": 5,
+        "mean": 0.001112386,
+        "sample_sd": 0.0017752522529573085,
+        "minimum": 0.00020334,
+        "maximum": 0.00427813
+      }
+    },
+    "43": {
+      "quantum_train_accuracy_pct": {
+        "count": 5,
+        "mean": 100.0,
+        "sample_sd": 0.0,
+        "minimum": 100.0,
+        "maximum": 100.0
+      },
+      "quantum_test_accuracy_pct": {
+        "count": 5,
+        "mean": 100.0,
+        "sample_sd": 0.0,
+        "minimum": 100.0,
+        "maximum": 100.0
+      },
+      "quantum_train_mse": {
+        "count": 5,
+        "mean": 0.00054722,
+        "sample_sd": 0.0005609642997999071,
+        "minimum": 0.00020861,
+        "maximum": 0.00153246
+      },
+      "quantum_test_mse": {
+        "count": 5,
+        "mean": 0.0006777,
+        "sample_sd": 0.000761377353977645,
+        "minimum": 0.00020764,
+        "maximum": 0.00201007
+      }
+    },
+    "44": {
+      "quantum_train_accuracy_pct": {
+        "count": 5,
+        "mean": 93.34,
+        "sample_sd": 14.892212730148598,
+        "minimum": 66.7,
+        "maximum": 100.0
+      },
+      "quantum_test_accuracy_pct": {
+        "count": 5,
+        "mean": 85.0,
+        "sample_sd": 33.54101966249684,
+        "minimum": 25.0,
+        "maximum": 100.0
+      },
+      "quantum_train_mse": {
+        "count": 5,
+        "mean": 0.185981858,
+        "sample_sd": 0.41348170666938594,
+        "minimum": 0.00022412,
+        "maximum": 0.92563626
+      },
+      "quantum_test_mse": {
+        "count": 5,
+        "mean": 0.277049322,
+        "sample_sd": 0.6165260843447765,
+        "minimum": 0.00022906,
+        "maximum": 1.37992014
+      }
+    },
+    "45": {
+      "quantum_train_accuracy_pct": {
+        "count": 5,
+        "mean": 91.66,
+        "sample_sd": 18.648806932348247,
+        "minimum": 58.3,
+        "maximum": 100.0
+      },
+      "quantum_test_accuracy_pct": {
+        "count": 5,
+        "mean": 85.0,
+        "sample_sd": 33.54101966249684,
+        "minimum": 25.0,
+        "maximum": 100.0
+      },
+      "quantum_train_mse": {
+        "count": 5,
+        "mean": 0.295015268,
+        "sample_sd": 0.436540531444976,
+        "minimum": 0.00019922,
+        "maximum": 0.97227313
+      },
+      "quantum_test_mse": {
+        "count": 5,
+        "mean": 0.355059916,
+        "sample_sd": 0.532073147237115,
+        "minimum": 0.00019858,
+        "maximum": 1.19399324
+      }
+    },
+    "46": {
+      "quantum_train_accuracy_pct": {
+        "count": 5,
+        "mean": 100.0,
+        "sample_sd": 0.0,
+        "minimum": 100.0,
+        "maximum": 100.0
+      },
+      "quantum_test_accuracy_pct": {
+        "count": 5,
+        "mean": 100.0,
+        "sample_sd": 0.0,
+        "minimum": 100.0,
+        "maximum": 100.0
+      },
+      "quantum_train_mse": {
+        "count": 5,
+        "mean": 0.0011075780000000001,
+        "sample_sd": 0.0016381277228348222,
+        "minimum": 0.00024812,
+        "maximum": 0.00402802
+      },
+      "quantum_test_mse": {
+        "count": 5,
+        "mean": 0.00113689,
+        "sample_sd": 0.001694419417071818,
+        "minimum": 0.00025054,
+        "maximum": 0.00415806
+      }
+    }
+  },
+  "by_initialization": {
+    "43": {
+      "quantum_train_accuracy_pct": {
+        "count": 5,
+        "mean": 100.0,
+        "sample_sd": 0.0,
+        "minimum": 100.0,
+        "maximum": 100.0
+      },
+      "quantum_test_accuracy_pct": {
+        "count": 5,
+        "mean": 100.0,
+        "sample_sd": 0.0,
+        "minimum": 100.0,
+        "maximum": 100.0
+      },
+      "quantum_train_mse": {
+        "count": 5,
+        "mean": 0.10142141,
+        "sample_sd": 0.2240015056823977,
+        "minimum": 0.00043338,
+        "maximum": 0.50212089
+      },
+      "quantum_test_mse": {
+        "count": 5,
+        "mean": 0.117359636,
+        "sample_sd": 0.25897831282259065,
+        "minimum": 0.00055279,
+        "maximum": 0.5806247
+      }
+    },
+    "44": {
+      "quantum_train_accuracy_pct": {
+        "count": 5,
+        "mean": 100.0,
+        "sample_sd": 0.0,
+        "minimum": 100.0,
+        "maximum": 100.0
+      },
+      "quantum_test_accuracy_pct": {
+        "count": 5,
+        "mean": 100.0,
+        "sample_sd": 0.0,
+        "minimum": 100.0,
+        "maximum": 100.0
+      },
+      "quantum_train_mse": {
+        "count": 5,
+        "mean": 0.000256526,
+        "sample_sd": 3.5556065305373715e-05,
+        "minimum": 0.00022695,
+        "maximum": 0.00030852
+      },
+      "quantum_test_mse": {
+        "count": 5,
+        "mean": 0.000266596,
+        "sample_sd": 5.614532954752336e-05,
+        "minimum": 0.0002161,
+        "maximum": 0.00034161
+      }
+    },
+    "45": {
+      "quantum_train_accuracy_pct": {
+        "count": 5,
+        "mean": 100.0,
+        "sample_sd": 0.0,
+        "minimum": 100.0,
+        "maximum": 100.0
+      },
+      "quantum_test_accuracy_pct": {
+        "count": 5,
+        "mean": 100.0,
+        "sample_sd": 0.0,
+        "minimum": 100.0,
+        "maximum": 100.0
+      },
+      "quantum_train_mse": {
+        "count": 5,
+        "mean": 0.000288422,
+        "sample_sd": 3.943087648024071e-05,
+        "minimum": 0.0002531,
+        "maximum": 0.00035116
+      },
+      "quantum_test_mse": {
+        "count": 5,
+        "mean": 0.000320222,
+        "sample_sd": 4.1314541870871576e-05,
+        "minimum": 0.00025314,
+        "maximum": 0.00035457
+      }
+    },
+    "46": {
+      "quantum_train_accuracy_pct": {
+        "count": 5,
+        "mean": 85.0,
+        "sample_sd": 20.7531925254887,
+        "minimum": 58.3,
+        "maximum": 100.0
+      },
+      "quantum_test_accuracy_pct": {
+        "count": 5,
+        "mean": 70.0,
+        "sample_sd": 41.07919181288746,
+        "minimum": 25.0,
+        "maximum": 100.0
+      },
+      "quantum_train_mse": {
+        "count": 5,
+        "mean": 0.38136021600000003,
+        "sample_sd": 0.5184035888542312,
+        "minimum": 0.00153246,
+        "maximum": 0.97227313
+      },
+      "quantum_test_mse": {
+        "count": 5,
+        "mean": 0.516871928,
+        "sample_sd": 0.7060552620743996,
+        "minimum": 0.00201007,
+        "maximum": 1.37992014
+      }
+    },
+    "47": {
+      "quantum_train_accuracy_pct": {
+        "count": 5,
+        "mean": 100.0,
+        "sample_sd": 0.0,
+        "minimum": 100.0,
+        "maximum": 100.0
+      },
+      "quantum_test_accuracy_pct": {
+        "count": 5,
+        "mean": 100.0,
+        "sample_sd": 0.0,
+        "minimum": 100.0,
+        "maximum": 100.0
+      },
+      "quantum_train_mse": {
+        "count": 5,
+        "mean": 0.00021603,
+        "sample_sd": 2.0538081702048026e-05,
+        "minimum": 0.00019922,
+        "maximum": 0.00024812
+      },
+      "quantum_test_mse": {
+        "count": 5,
+        "mean": 0.000217832,
+        "sample_sd": 2.168187999228849e-05,
+        "minimum": 0.00019858,
+        "maximum": 0.00025054
+      }
+    }
+  },
+  "baselines": {
+    "majority_test_accuracy_pct": {
+      "count": 25,
+      "mean": 35.0,
+      "sample_sd": 20.41241452319315,
+      "minimum": 0.0,
+      "maximum": 50.0
+    },
+    "linear_test_accuracy_pct": {
+      "count": 25,
+      "mean": 30.0,
+      "sample_sd": 19.094065395649334,
+      "minimum": 0.0,
+      "maximum": 50.0
+    },
+    "polynomial_test_accuracy_pct": {
+      "count": 25,
+      "mean": 50.0,
+      "sample_sd": 0.0,
+      "minimum": 50.0,
+      "maximum": 50.0
+    },
+    "nearest_neighbour_test_accuracy_pct": {
+      "count": 25,
+      "mean": 0.0,
+      "sample_sd": 0.0,
+      "minimum": 0.0,
+      "maximum": 0.0
+    }
+  },
+  "perfect_held_out_configurations": 23,
+  "lower_performing_configurations": [
+    {
+      "split_seed": 44,
+      "init_seed": 46,
+      "source_file": "disjoint_runs_20261015_194041_859006.csv",
+      "quantum_train_mse": 0.92563626,
+      "quantum_train_accuracy_pct": 66.7,
+      "quantum_test_mse": 1.37992014,
+      "quantum_test_accuracy_pct": 25.0,
+      "majority_test_accuracy_pct": 50.0,
+      "linear_test_accuracy_pct": 25.0,
+      "polynomial_test_accuracy_pct": 50.0,
+      "nearest_neighbour_test_accuracy_pct": 0.0
+    },
+    {
+      "split_seed": 45,
+      "init_seed": 46,
+      "source_file": "disjoint_runs_20261015_203356_702327.csv",
+      "quantum_train_mse": 0.97227313,
+      "quantum_train_accuracy_pct": 58.3,
+      "quantum_test_mse": 1.19399324,
+      "quantum_test_accuracy_pct": 25.0,
+      "majority_test_accuracy_pct": 50.0,
+      "linear_test_accuracy_pct": 50.0,
+      "polynomial_test_accuracy_pct": 50.0,
+      "nearest_neighbour_test_accuracy_pct": 0.0
+    }
+  ],
+  "canonical_sources": {
+    "42": "/Users/ceasarjackson/Projects/labs/quantum-computing/results/pennylane/disjoint_runs_20261015_135700_901540.csv",
+    "43": "/Users/ceasarjackson/Projects/labs/quantum-computing/results/pennylane/disjoint_runs_20261015_143226_802847.csv",
+    "44": "/Users/ceasarjackson/Projects/labs/quantum-computing/results/pennylane/disjoint_runs_20261015_194041_859006.csv",
+    "45": "/Users/ceasarjackson/Projects/labs/quantum-computing/results/pennylane/disjoint_runs_20261015_203356_702327.csv",
+    "46": "/Users/ceasarjackson/Projects/labs/quantum-computing/results/pennylane/disjoint_runs_20261015_204308_944440.csv"
+  }
+}
