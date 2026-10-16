@@ -44,6 +44,9 @@ for small chains.
                      c ZZ)) that break total spin, and symmetry-adapted ones
                      with one angle PER BOND, plus their exact noisy state and
                      their S_z / S^2 projections.
+  * bond_clifford, clifford_bond_steps, compiled_sv, tensor_energy, tensor_s2 :
+                     the bond gate as Clifford . controlled phase . Clifford
+                     (Lab 41), whole compiled circuits and their energy / spin.
 
 Noise model: after each gate layer, every qubit the layer acted on suffers the
 depolarizing channel rho -> (1-p) rho + p/3 (X rho X + Y rho Y + Z rho Z).
@@ -706,12 +709,15 @@ def _local(first, second):
     return np.kron(first, second)
 
 
-def compiled_bond_steps(angle):
+def compiled_bond_steps(angle, amp=1.0):
     """exp(-i angle (XX+YY+ZZ)) as three CNOTs plus one-qubit rotations.
 
     Returns [(kind, 4x4 matrix)] in time order, kind "C" for a CNOT and "1" for
     a layer of one-qubit gates. The construction is the three-CNOT circuit for
     exp(-i(a XX + b YY + c ZZ)) with a = b = c = angle (up to a global phase).
+    `amp` scales the three angle-dependent rotations (an amplitude
+    miscalibration): one factor for all, or three (one per rotation); amp = 1 is
+    exact.
     """
     ident = PAULI["I"]
     half = np.pi / 2
@@ -725,9 +731,11 @@ def compiled_bond_steps(angle):
         return rotation("Y", t)
 
     # Angles of the three middle rotations (Vatan and Williams, 2004).
-    theta = -(half - 2 * angle)
-    phi = 2 * angle - half
-    psi = -(2 * angle - half)
+    # One amplitude factor, or one per rotation (theta, phi, psi).
+    amp_t, amp_p, amp_s = np.broadcast_to(np.asarray(amp, dtype=float), (3,))
+    theta = -(half - 2 * angle) * amp_t
+    phi = (2 * angle - half) * amp_p
+    psi = -(2 * angle - half) * amp_s
     return [
         ("1", _local(ident, rz(half))),
         ("C", _CNOT10),
@@ -1064,3 +1072,64 @@ def rho_projected(rho, n, kind, proj=None):
         mat0 = mat * keep[:, None] * keep[None, :]
     acceptance = float(np.trace(mat0).real)
     return dm_expectation(mat0.reshape((2,) * (2 * n)), n) / acceptance, acceptance
+
+
+# ----------------------------------------------------------------------------
+# The Clifford-conjugated bond gate (Lab 41)
+# ----------------------------------------------------------------------------
+_HADAMARD = np.array([[1, 1], [1, -1]], dtype=complex) / np.sqrt(2)
+
+
+def bond_clifford():
+    """The fixed Clifford C = (H on the left qubit) . CNOT(left -> right).
+
+    C maps the two-qubit singlet to |11> and the triplet onto the span of
+    |00>, |01> and |10>, so the bond gate is a phase on |11> in C's frame.
+    """
+    return np.kron(_HADAMARD, PAULI["I"]) @ _CNOT01
+
+
+def clifford_bond_steps(angle, amp=1.0):
+    """exp(-i angle (XX+YY+ZZ)) as Clifford . controlled phase . Clifford.
+
+    exp(-i t sigma.sigma) = e^(-it) P_triplet + e^(3it) P_singlet, a phase of
+    4t on the singlet. Returns [(kind, 4x4 matrix)] in time order (kind "C" for
+    a two-qubit gate, "1" for one-qubit gates): CNOT, H, CPHASE(4 t amp), H,
+    CNOT. The ONLY angle dependence is in the controlled phase; `amp` scales
+    its phase (an amplitude miscalibration of that one gate).
+    """
+    had = np.kron(_HADAMARD, PAULI["I"])
+    cphase = np.diag([1, 1, 1, np.exp(4j * angle * amp)])
+    return [("C", _CNOT01), ("1", had), ("C", cphase), ("1", had), ("C", _CNOT01)]
+
+
+def compiled_sv(n, steps, bond_seq, **kwargs):
+    """Pure state of a circuit whose every bond is compiled by `bond_seq`.
+
+    `steps` is a list of (parity, angles) as for `general_sv`, with one angle
+    per bond or one shared angle (only the first of a triple is used, since
+    a = b = c). `bond_seq(angle, **kwargs)` returns the [(kind, matrix)] list.
+    """
+    psi = _site_order_singlets(n)
+    for parity, abc in steps:
+        bonds = group_terms(n, parity)
+        arr = np.asarray(abc, dtype=float)
+        angles = [arr[0]] * len(bonds) if arr.ndim == 1 else arr[:, 0]
+        for b, t in zip(bonds, angles):
+            for _, mat in bond_seq(t, **kwargs):
+                psi = dm_apply(psi, [b, b + 1], mat)
+    return psi
+
+
+def tensor_energy(n, psi):
+    """<H> of a pure state tensor with one axis per site."""
+    total = 0.0
+    for b in range(n - 1):
+        total += np.vdot(psi, dm_apply(psi, [b, b + 1], BOND)).real
+    return float(total)
+
+
+def tensor_s2(n, psi):
+    """<S^2> of a pure state tensor with one axis per site."""
+    vec = psi.reshape(-1)
+    return float(np.vdot(vec, s2_matrix(n) @ vec).real)
