@@ -71,9 +71,9 @@ class ColorFormatter(logging.Formatter):
         color = self.COLORS.get(record.levelno, "")
         if color:
             emphasis = "" if record.levelno == logging.DEBUG else BOLD
-            record.levelname = f"{emphasis}{color}{original:<5}{RESET}"
+            record.levelname = f"{emphasis}{color}{original}{RESET}"
         else:
-            record.levelname = f"{original:<5}"
+            record.levelname = original
         try:
             return super().format(record)
         finally:
