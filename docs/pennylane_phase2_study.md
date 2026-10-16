@@ -18,9 +18,9 @@ This study extends the Phase I factorial evaluation of a four-qubit variational 
 
 The classifier achieved perfect held-out accuracy in 44 of 50 configurations. Mean held-out accuracy was 90.0% (configuration-level SD 27.7 points; partition-level SD 8.8 points).
 
-All six lower-performing configurations also failed to fit their own training data (58–67% training accuracy), and every configuration that reached 100% training accuracy also reached 100% held-out accuracy. In this design, failures are therefore failures of optimization, not of generalization. The six failures came from two of the five initialization seeds (seed 200: 4 of 10 partitions; seed 203: 2 of 10), and every partition succeeded with at least four of its five seeds.
+All six lower-performing configurations also failed to fit their own training data (58–67% training accuracy), and every configuration that reached 100% training accuracy also reached 100% held-out accuracy. These failures were associated with unsuccessful training rather than overfitting after successful training; the specific optimization mechanism remains unresolved. The six failures came from two of the five initialization seeds (seed 200: 4 of 10 partitions; seed 203: 2 of 10), and every partition succeeded with at least four of its five seeds.
 
-Twenty configurations were run twice, in two independent executions, and reproduced bit for bit.
+Twenty configurations were independently re-executed and matched exactly across the compared checkpoint structures and numerical metrics.
 
 These results characterize this specific model and design. They do not demonstrate quantum computational advantage.
 
@@ -106,7 +106,7 @@ Parity is solvable exactly by a trivial classical rule (sum the bits mod 2). The
 
 ## 4. Failure Analysis
 
-### 4.1 Every failure is an optimization failure
+### 4.1 Failures are associated with unsuccessful training
 
 | Partition | Init | Training accuracy | Held-out accuracy | Training MSE | Held-out MSE |
 |---|---|---:|---:|---:|---:|
@@ -121,7 +121,7 @@ The split is exact: the 44 configurations with 100% training accuracy are the 44
 
 **Observed finding:** within this design, held-out success is fully predicted by training success.
 
-**Interpretation, with care:** the circuit's CNOT chain computes parity, so when optimization succeeds it lands on the parity function itself and generalizes trivially. This is consistent with a well-matched architecture, not with the model learning a hard function from little data.
+**Interpretation, with care:** the circuit architecture is well matched to the parity task. Each successful configuration correctly classified all 12 training inputs and all four held-out inputs, covering the complete 16-element input space. This establishes correct classification across the finite experimental domain, not generalization beyond it or quantum computational advantage.
 
 ### 4.2 Failures cluster by initialization
 
@@ -141,7 +141,7 @@ No partition failed with more than one seed. Seed 200 succeeded on six partition
 
 ### 5.1 Independent re-execution
 
-An earlier execution with identical settings and identical source hashes (`20261016T040116_789594Z_34400`) completed 20 configurations before it was stopped. All 20 overlap the canonical run and **match it exactly** (maximum absolute difference in every metric: 0), including three of the failures (101/200, 102/200, 103/200). The failures are deterministic properties of the seeds, not run-to-run noise.
+An earlier execution with identical settings and identical source hashes (`20261016T040116_789594Z_34400`) completed 20 configurations before it was stopped. All 20 overlap the canonical run and **match it exactly** across their checkpoint structures, including 280 numerical comparisons with maximum absolute difference 0. Three reproduced configurations were failures (101/200, 102/200, 103/200). The failures are deterministic properties of the seeds, not run-to-run noise.
 
 ### 5.2 Source provenance
 
@@ -210,7 +210,7 @@ The two phases use disjoint seeds and agree: a roughly 10% failure rate at 200 s
 
 ## 9. Conclusion
 
-Across 50 validated configurations on new partitions and new initializations, the four-qubit variational parity classifier reached perfect held-out accuracy 88% of the time. Every failure was a failure to train, never a failure to generalize after training, and failures concentrated in two initialization seeds. Results reproduced exactly across independent executions.
+Across 50 validated configurations on new partitions and new initializations, the four-qubit variational parity classifier reached perfect held-out accuracy 88% of the time. All six lower-performing configurations also exhibited substantial training error, suggesting unsuccessful optimization rather than overfitting after successful training. The underlying mechanism remains unresolved, and failures concentrated in two initialization seeds. Results reproduced exactly across independent executions.
 
 The contribution is a validated, reproducible record of *optimization reliability* for a small variational model, together with clear evidence that its successes reflect an architecture matched to the task, not a quantum advantage.
 
