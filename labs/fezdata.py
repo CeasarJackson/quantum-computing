@@ -20,9 +20,10 @@ ONE place so that Labs 46 and 47 analyse exactly the same data:
   * MODEL_ENERGY  the noisy-model energies Lab 44 printed for those angles;
   * MEASURED      the measured energies and standard errors (2000 shots per
                   basis, readout-corrected);
-  * run-size facts (shots, circuits, seconds running on the device).
+  * run-size facts (shots, circuits, seconds running on the device) for
+                  both live runs so far (Lab 44 and Lab 46);
 
-  * shortfalls / fit_lines  the two small fits Labs 46 and 47 share: energy
+  * shortfalls / fit_lines / fit_design  the small fits Labs 46 and 47 share: energy
                   lost against the noiseless energy, and a weighted fit of the
                   measured loss to c + s * (modelled loss).
 
@@ -90,6 +91,10 @@ SHOTS = 2000
 CIRCUITS = 20
 # The job showed RUNNING for 16 s (queued 6 s, done at 22 s wall clock).
 RUNNING_SECONDS = 16.0
+# Every live ibm_fez run so far: (circuits, shots per circuit, seconds RUNNING).
+# Lab 44 (2026-10-16): 20 x 2000 in 16 s. Lab 46 (2026-10-17): 15 x 4000 in
+# 62 s (queued 219 s). The seconds per shot differ by 2.6x between the two.
+RUNS = ((20, 2000, 16.0), (15, 4000, 62.0))
 
 
 def shortfalls(chain, lam):
@@ -118,3 +123,15 @@ def fit_lines(mod, mea, sig):
     beta = cov @ (a.T @ (w * mea))
     chi_both = float((w * (mea - a @ beta) ** 2).sum())
     return s1, chi_scale, beta, cov, chi_both
+
+
+def fit_design(columns, mea, sig):
+    """Weighted linear fit mea = sum_i beta_i * columns[i]; (beta, cov, chi2)."""
+    # Normal equations with weights 1/sigma^2, as in fit_lines but for any
+    # number of columns (a constant, a step at depth 1, the modelled loss...).
+    w = 1 / np.asarray(sig) ** 2
+    a = np.vstack(columns).T
+    cov = np.linalg.inv(a.T @ (a * w[:, None]))
+    beta = cov @ (a.T @ (w * np.asarray(mea)))
+    chi2 = float((w * (np.asarray(mea) - a @ beta) ** 2).sum())
+    return beta, cov, chi2

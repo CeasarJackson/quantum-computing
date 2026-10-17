@@ -36,13 +36,14 @@ numbers (no hardware, no network):
      pairs (whose predicted gain is 0.0001 and 0.0023: unresolvable, so they
      are NULL controls). Then a plan: ideal, noise-trained and a sign-flipped
      copy of the ideal angles (the same noisy energy by time-reversal) at
-     depth 3, with the QPU time that costs at the rate of the recorded run.
+     depth 3, with the QPU time that costs at the rates of the recorded runs.
      A Monte-Carlo test checks that the shot formula really gives the power
      it promises, and that a null pair is flagged at the nominal rate.
 
-Honest limit: the plan is a calculation from the recorded run, not a run. The
-QPU seconds assume the rate seen once (16 s for 40000 shots); a real account
-may bill differently.
+Honest limit: the plan is a calculation from the recorded runs, not a run. The
+QPU seconds use the two rates seen so far on ibm_fez (0.40 ms per shot in
+Lab 44, 1.03 ms in Lab 46; they differ by 2.6x, so the plan is a range); a
+real account may bill differently.
 
 Security
 --------
@@ -81,10 +82,9 @@ log = get_logger("lab47")
 try:
     from fezdata import (
         ANGLES,
-        CIRCUITS,
         LAMBDA_FEZ,
         MEASURED,
-        RUNNING_SECONDS,
+        RUNS,
         SHOTS,
         fit_lines,
         shortfalls,
@@ -459,21 +459,22 @@ def check_budget(r, ctx):
     r.append(
         check(abs(fp - 0.05) < tol_fp, "a null pair is flagged at the nominal rate")
     )
-    # QPU time at the rate of the recorded run.
-    rate = RUNNING_SECONDS / (SHOTS * CIRCUITS)
+    # QPU time at the rates of the recorded runs: a range, not one number.
+    rates = [sec / (nc * sh) for nc, sh, sec in RUNS]
     n_plan = int(math.ceil(n3_scaled / 1000.0) * 1000)
     # Three angle sets x three bases, plus the two readout calibrations.
     plan_circuits = 3 * 3 + 2  # ideal, noise-trained, sign-flipped x 3 bases + 2 cal
     plan_shots = plan_circuits * n_plan
-    seconds = plan_shots * rate
+    lo, hi = plan_shots * min(rates), plan_shots * max(rates)
     log.info(
-        "recorded rate %.2f ms per shot; plan: %d circuits x %d shots = %d shots, "
-        "about %.0f s of running time",
-        1000 * rate,
+        "recorded rates %s ms per shot; plan: %d circuits x %d shots = %d shots, "
+        "about %.0f to %.0f s of running time",
+        " and ".join(f"{1000 * x:.2f}" for x in rates),
         plan_circuits,
         n_plan,
         plan_shots,
-        seconds,
+        lo,
+        hi,
     )
     log.info(
         "plan = depth-3 ideal angles, noise-trained angles and the ideal angles "
@@ -482,13 +483,12 @@ def check_budget(r, ctx):
         "backend's maximum shots per circuit before submitting"
     )
     r.append(
-        check(0.05e-3 < rate < 2e-3, "recorded rate is plausible (0.05-2 ms per shot)")
-    )
-    r.append(
         check(
-            seconds < 300, f"the decisive plan fits in {seconds:.0f} s of running time"
+            all(0.05e-3 < x < 2e-3 for x in rates),
+            "recorded rates are plausible (0.05-2 ms per shot)",
         )
     )
+    r.append(check(hi < 300, f"even at the slower rate the plan needs only {hi:.0f} s"))
 
 
 def summarise(r):

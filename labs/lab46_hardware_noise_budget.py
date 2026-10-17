@@ -40,6 +40,13 @@ properly and then designs the measurement that explains it.
      simulator table built for THIS circuit family, to compare with 0.0037
      (Lab 17, four other qubits) and with the 0.0030 the offset fit prefers.
 
+FIRST LIVE RUN (ibm_fez, 2026-10-17): neither story held. The depth-0 energy
+was -8.709 +/- 0.044, 6 sigma from both predictions, so about 0.26 of the
+loss is present before any bond gate and the rest appears with the first
+layer. The mirror gave lambda = 0.0036 (0.0034 .. 0.0038), the same as Lab 17
+on other qubits, so the per-gate noise of the model is right. The depth-1
+sign-flip gap did not repeat (+0.021 +/- 0.074 against +0.208 +/- 0.103).
+
 The lab claims only what its checks test: the recorded-data fit, the circuit
 structure, the estimator and calibration on simulators. What the machine does
 is REPORTED, not asserted.
@@ -107,6 +114,7 @@ try:
         LAYOUT,
         MEASURED,
         MODEL_ENERGY,
+        fit_design,
         fit_lines,
         shortfalls,
     )
@@ -461,10 +469,27 @@ def analyse(r, ctx, keys, counts, backend_name, dry):
         pb,
         zb,
     )
-    near = "OFFSET (loss before any bond gate)" if abs(za) < abs(zb) else "FIRST LAYER"
     if dry:
         log.info("(dry run: the verdict below describes the simulator, not ibm_fez)")
-    log.info("verdict: the depth-0 energy is closer to the %s story", near)
+    # Within 3 sigma of a story counts as agreeing with it; otherwise neither.
+    if abs(za) < 3:
+        near = "agrees with the OFFSET story (loss before any bond gate)"
+    elif abs(zb) < 3:
+        near = "agrees with the FIRST-LAYER story (no loss at depth 0)"
+    else:
+        near = "matches NEITHER story: the loss is split"
+    log.info("verdict: the depth-0 energy %s", near)
+    # How much of the depth-0 shortfall the model does not explain.
+    free = ctx["chain"].energy([], 0.0)
+    extra = (e0 - free) - (ctx["pred_first_layer"] - free)
+    log.info(
+        "depth-0 loss %.3f +/- %.3f against %.3f modelled: %.3f +/- %.3f unexplained",
+        e0 - free,
+        s0,
+        ctx["pred_first_layer"] - free,
+        extra,
+        s0,
+    )
     # Replication of the Lab 44 depth-1 circuits and of their sign-flip gap.
     for kind in ("ideal", "aware"):
         old, sold = MEASURED[(1, kind)]
@@ -485,7 +510,44 @@ def analyse(r, ctx, keys, counts, backend_name, dry):
         gap,
         sgap,
     )
+    components_report(ctx, en, dry)
     mirror_report(r, ctx, by_key)
+
+
+def components_report(ctx, en, dry):
+    """Refit every energy with a depth-0 loss, a first-layer step and a scale."""
+    # Recorded Lab 44 points first, then this run's three (energy, error) pairs.
+    chain = ctx["chain"]
+    pts = [(k[0], k[1], *MEASURED[k]) for k in ANGLES]
+    pts += [(d, kind, *en[(d, kind)]) for (d, kind) in en]
+    mod, mea, sig, dep = [], [], [], []
+    for depth, kind, energy, err in pts:
+        x = [] if depth == 0 else ANGLES[(depth, kind)]
+        free = chain.energy(x, 0.0)
+        mod.append(chain.energy(x, LAMBDA_FEZ) - free)
+        mea.append(energy - free)
+        sig.append(err)
+        dep.append(depth)
+    mod = np.array(mod)
+    one = np.ones_like(mod)
+    # step = 1 for every circuit that contains at least one bond-gate layer.
+    step = (np.array(dep) >= 1).astype(float)
+    if dry:
+        log.info("(dry run: the three new points come from the simulator)")
+    log.info("refit of all %d energies (loss against the noiseless energy):", len(pts))
+    models = {
+        "c + s*model": ([one, mod], ("c", "s")),
+        "c0 + c1*[depth>=1] + s*model": ([one, step, mod], ("c0", "c1", "s")),
+    }
+    for name, (cols, labels) in models.items():
+        beta, cov, chi2 = fit_design(cols, mea, sig)
+        parts = ", ".join(
+            f"{n} = {b:.3f} +/- {math.sqrt(cov[i, i]):.3f}"
+            for i, (n, b) in enumerate(zip(labels, beta))
+        )
+        log.info(
+            "  %-28s %s, chi2 = %.1f (%d dof)", name, parts, chi2, len(pts) - len(beta)
+        )
 
 
 def mirror_report(r, ctx, by_key):
