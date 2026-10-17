@@ -41,6 +41,31 @@ and any difference on the machine is specific to the physical qubits and
 links. A loss tied to "the first gate" stays at k = 1 in both orders; a loss
 tied to one particular link moves with that link.
 
+FIRST LIVE RUNS (ibm_fez, 2026-10-17, one job per order, 32 s running each,
+about a minute apart on the same qubits, so they share calibration, drift and
+readout-correction errors and are NOT independent experiments):
+  * Depth 0 (k = 0) again loses 0.29 and 0.27 beyond the model, as in Lab 46.
+  * The orders differ by no more than 1.7 sigma anywhere (chi-squared 6.4 for
+    6 points). A shared effect cancels in that difference, so a loss tied to
+    one qubit or link would show up there; none does.
+  * JOINT ANALYSIS of all 12 points by generalised least squares with
+    a + b [k >= 1] + g k, a separate offset allowed for each run, and extra
+    covariance for an offset in each run, an offset shared by both, and a
+    shared relative (scale) error. The readout correction alone is uncertain
+    by about 0.03 in energy (attenuation from 4000 shots) and is NOT in the
+    printed error bars. Result: g = 0.053 +/- 0.011 per gate (4.8 sigma, and
+    still 3.9 sigma with offsets of 0.10 and a 2% scale error); b = 0.13 +/-
+    0.05 (2.8 sigma, 2.5 sigma with those errors); only the depth-0 loss a =
+    0.28 widens (+/- 0.03 to +/- 0.2) because offsets are absorbed by it.
+  * With a free offset, the fixed STEP shape is rejected (chi-squared 45
+    for 10) but the fixed GRADUAL shape is not (chi-squared 18.1, p = 0.05, with
+    moderate shared errors). So the Lab 46 "step" is better read as loss that
+    accumulates over the first layer (about 0.05 per gate on top of the model)
+    plus, at most, a smaller first-gate jump (+0.18 +/- 0.05 for the first
+    gate alone; 2.8 sigma as a separate term). The printed single-run verdicts
+    (reverse "agrees with GRADUAL" at p = 0.04) are borderline, not evidence.
+  The check below ("recorded live runs") reproduces these numbers offline.
+
 The lab claims only what its checks test: the circuit builder against an ideal
 simulator, the noise model against Lab 21, the two predictions, and the
 verdict logic on synthetic data. What the machine does is REPORTED, not
@@ -68,7 +93,7 @@ Usage
     python3 labs/lab48_first_layer_scan.py                       # dry run
     read -rs IBM_QUANTUM_API_KEY; export IBM_QUANTUM_API_KEY     # hidden prompt
     python3 labs/lab48_first_layer_scan.py --live --backend ibm_fez
-    python3 labs/lab48_first_layer_scan.py --retrieve <job id>
+    python3 labs/lab48_first_layer_scan.py --retrieve <job id> [--order reverse]
     python3 labs/lab48_first_layer_scan.py --live --order reverse   # control
 
 Log files
@@ -106,6 +131,7 @@ try:
     from fezdata import (
         ANGLES,
         LAB46_FIT,
+        LAB48,
         LAMBDA_FEZ,
         LAYOUT,
         RUNS,
@@ -356,6 +382,136 @@ def check_predictions(r, ctx):
     )
 
 
+def joint_design():
+    """Stacked forward + reverse data: excess loss, errors, run index, k, free energy."""
+    free, mloss = model_table(NoisyChain(N), ORDERS["forward"])
+    y, sig, run = [], [], []
+    for i, name in enumerate(("forward", "reverse")):
+        rows = LAB48[name]
+        y += [x[0] - free[k] - mloss[k] for k, x in enumerate(rows)]
+        sig += [x[1] for x in rows]
+        run += [i] * len(rows)
+    return np.array(y), np.array(sig), np.array(run), np.tile(free, 2), mloss
+
+
+def joint_cov(sig, run, free, t_run=0.0, t_shared=0.0, eps=0.0):
+    """Covariance of the 12 points: shot noise plus shared calibration effects.
+
+    t_run     offset common to all k of one run (readout correction, drift);
+    t_shared  offset common to BOTH runs (same device state);
+    eps       relative error common to both runs, which scales with the energy.
+    The two scans were minutes apart on the same qubits, so averaging them as
+    independent would overstate the precision.
+    """
+    cov = np.diag(sig**2)
+    cov = cov + t_run**2 * (run[:, None] == run[None, :])
+    cov = cov + t_shared**2 + eps**2 * np.outer(free, free)
+    return cov
+
+
+def gls(x, y, cov):
+    """Generalised least squares: (beta, errors, chi-squared)."""
+    inv = np.linalg.inv(cov)
+    var = np.linalg.inv(x.T @ inv @ x)
+    beta = var @ x.T @ inv @ y
+    res = y - x @ beta
+    return beta, np.sqrt(np.diag(var)), float(res @ inv @ res)
+
+
+def check_recorded(r, ctx):
+    """Reproduce the live-run analysis from the stored numbers (no network)."""
+    log.info("=== Check 5: the recorded live runs, analysed jointly ===")
+    y, sig, run, free, mloss = joint_design()
+    k = np.tile(np.array(KS, dtype=float), 2)
+    first = (k >= 1).astype(float)
+    n = len(KS)
+    lim = {d: float(chi2_dist.ppf(0.99, d)) for d in (6, 9, 10)}
+    # (1) Order difference: a shared effect cancels, a link-specific one would not.
+    diff = y[:n] - y[n:]
+    sd = np.hypot(sig[:n], sig[n:])
+    chi_d = float(((diff / sd) ** 2).sum())
+    log.info("forward - reverse: z = %s, chi2 = %.1f", np.round(diff / sd, 1), chi_d)
+    r.append(check(chi_d < lim[6], "the orders agree: no link-specific loss seen"))
+    # (2) Joint fit with the same a, b, g for both runs under growing systematics.
+    one = np.ones_like(k)
+    design = np.vstack([one, first, k]).T
+    log.info("joint fit a + b*[k>=1] + g*k under assumed shared errors:")
+    sens = {}
+    for tr, ts, eps in ((0, 0, 0), (0.03, 0.03, 0.005), (0.10, 0.10, 0.02)):
+        cov = joint_cov(sig, run, free, tr, ts, eps)
+        beta, err, chi = gls(design, y, cov)
+        sens[(tr, ts, eps)] = (beta, err, chi)
+        log.info(
+            "  run %.2f shared %.2f scale %.3f: a = %.3f +/- %.3f, b = %.3f +/- %.3f "
+            "(%.1f sigma), g = %.3f +/- %.3f (%.1f sigma), chi2 = %.1f",
+            tr,
+            ts,
+            eps,
+            beta[0],
+            err[0],
+            beta[1],
+            err[1],
+            beta[1] / err[1],
+            beta[2],
+            err[2],
+            beta[2] / err[2],
+            chi,
+        )
+    base, mid, big = (
+        sens[(0, 0, 0)],
+        sens[(0.03, 0.03, 0.005)],
+        sens[(0.10, 0.10, 0.02)],
+    )
+    r.append(check(base[2] < lim[9], "the joint fit is consistent (9 dof)"))
+    r.append(
+        check(
+            big[0][2] / big[1][2] > 3,
+            "growth per gate g stays > 3 sigma at 10% offsets",
+        )
+    )
+    r.append(
+        check(
+            abs(big[1][2] - base[1][2]) < 0.3 * base[1][2],
+            "offsets leave the error on g almost unchanged",
+        )
+    )
+    r.append(
+        check(
+            mid[0][0] / mid[1][0] > 3,
+            "the depth-0 loss a is > 3 sigma at moderate errors",
+        )
+    )
+    r.append(
+        check(
+            big[1][0] > 4 * base[1][0], "only the depth-0 loss widens at large offsets"
+        )
+    )
+    # (3) Fixed shapes with a free offset per run (offset-immune shape tests).
+    offsets = np.vstack([run == 0, run == 1]).T.astype(float)
+    amp = LAB46_FIT["c1"][0]
+    cov = joint_cov(sig, run, free, 0.03, 0.03, 0.005)
+    for name, shape in (("STEP", amp * first), ("GRADUAL", amp * k / KS[-1])):
+        _, _, chi = gls(offsets, y - shape, cov)
+        p = float(chi2_dist.sf(chi, 10))
+        log.info(
+            "shape %s with a free offset per run: chi2 = %.1f (10 dof), p = %.3f",
+            name,
+            chi,
+            p,
+        )
+        if name == "STEP":
+            r.append(
+                check(chi > lim[10], "the STEP shape is rejected with a free offset")
+            )
+        else:
+            r.append(
+                check(
+                    chi < lim[10],
+                    "the GRADUAL shape is NOT rejected with a free offset",
+                )
+            )
+
+
 # ----------------------------------------------------------------------------
 # Analysis of a finished run
 # ----------------------------------------------------------------------------
@@ -472,7 +628,9 @@ def finish_retrieve(args, service, secret, r, ctx):
     """--retrieve: fetch a finished job and analyse it (order from the job file)."""
     try:
         meta = json.loads(JOB_FILE.read_text())
-        ctx["order"] = ORDERS[meta.get("order", "forward")]
+        # An explicit --order wins: last_job.json only remembers the LAST job, so
+        # retrieving an older job of the other order needs the flag.
+        ctx["order"] = ORDERS[args.order or meta.get("order", "forward")]
         keys = build_jobs(ctx["order"])[0]
         job = service.job(args.retrieve)
         state = wait_for(job, args.wait, poll=10)
@@ -494,7 +652,12 @@ def main(argv=None):
     ap.add_argument("--live", action="store_true", help="use real IBM hardware")
     ap.add_argument("--retrieve", metavar="JOB_ID", help="analyse an earlier job")
     ap.add_argument("--backend", help="backend name; default: least busy")
-    ap.add_argument("--order", choices=tuple(ORDERS), default="forward")
+    ap.add_argument(
+        "--order",
+        choices=tuple(ORDERS),
+        default=None,
+        help="gate order (default forward)",
+    )
     ap.add_argument(
         "--layout",
         default=",".join(str(q) for q in LAYOUT),
@@ -524,13 +687,14 @@ def main(argv=None):
         if len(layout) != N or len(set(layout)) != N:
             ap.error(f"--layout needs {N} different qubits or 'auto'")
     # The chain model is built once (a 64 x 64 density-matrix simulator).
-    ctx = {"chain": NoisyChain(N), "order": ORDERS[args.order]}
+    ctx = {"chain": NoisyChain(N), "order": ORDERS[args.order or "forward"]}
     # r collects every check's boolean so the exit code reflects all of them.
     r = []
     check_models(r, ctx)
     check_predictions(r, ctx)
+    check_recorded(r, ctx)
 
-    log.info("=== Check 5: connect and choose a backend ===")
+    log.info("=== Check 6: connect and choose a backend ===")
     service, secret = connect(args)
     if isinstance(service, str):
         return 2
@@ -541,7 +705,7 @@ def main(argv=None):
         return 1
     log.info("backend %s: %d qubits", backend.name, backend.num_qubits)
 
-    log.info("=== Check 6: transpile onto one set of physical qubits ===")
+    log.info("=== Check 7: transpile onto one set of physical qubits ===")
     keys, circuits = build_jobs(ctx["order"])
     isa, used = transpile_all(backend, circuits, layout)
     log.info("physical qubits used (same for every circuit): %s", used)
@@ -559,7 +723,7 @@ def main(argv=None):
     log.info("two-qubit gates: %s (expected %s)", twoq, want)
     r.append(check(twoq == want, "no gate cancelled and no routing overhead"))
 
-    log.info("=== Check 7: run %d circuits x %d shots ===", len(isa), args.shots)
+    log.info("=== Check 8: run %d circuits x %d shots ===", len(isa), args.shots)
     plan_time(args.shots)
     if args.live:
         log.warn_("LIVE: this uses real QPU time. cap=%d s", args.max_seconds)
@@ -574,7 +738,7 @@ def main(argv=None):
                 "backend": backend.name,
                 "shots": args.shots,
                 "layout": used,
-                "order": args.order,
+                "order": args.order or "forward",
             }
         )
     )
@@ -593,7 +757,7 @@ def main(argv=None):
         return 1
     result = job.result()
 
-    log.info("=== Check 8: results ===")
+    log.info("=== Check 9: results ===")
     counts = [result[i].data.meas.get_counts() for i in range(len(isa))]
     r.append(
         check(

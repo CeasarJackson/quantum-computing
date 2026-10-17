@@ -21,7 +21,7 @@ ONE place so that Labs 46 and 47 analyse exactly the same data:
   * MEASURED      the measured energies and standard errors (2000 shots per
                   basis, readout-corrected);
   * run-size facts (shots, circuits, seconds running on the device) for
-                  both live runs so far (Lab 44 and Lab 46);
+                  every live run so far (Labs 44, 46 and 48);
 
   * shortfalls / fit_lines / fit_design  the small fits Labs 46 and 47 share: energy
                   lost against the noiseless energy, and a weighted fit of the
@@ -100,6 +100,30 @@ RUNS = ((20, 2000, 16.0), (15, 4000, 62.0))
 # here): the depth-0 energy and the three-part refit of all nine energies,
 #     loss = c0 + c1 * [depth >= 1] + s * (modelled loss).
 # Lab 48 turns these into predictions fixed BEFORE its own run.
+# Lab 48 live runs (ibm_fez, 2026-10-17, same six qubits, 20 circuits x 4000
+# shots each, 32 s running each): measured energy and standard error after the
+# singlets plus k = 0..5 bond gates, as printed (3 decimals), readout-corrected.
+# "forward" applies bonds 1,3,0,2,4; "reverse" applies 3,1,4,2,0 (the mirror
+# image, so the noise model gives identical numbers for both).
+LAB48 = {
+    "forward": (
+        (-8.678, 0.044),
+        (-8.000, 0.047),
+        (-7.368, 0.050),
+        (-7.893, 0.051),
+        (-8.659, 0.052),
+        (-8.975, 0.051),
+    ),
+    "reverse": (
+        (-8.697, 0.044),
+        (-7.967, 0.047),
+        (-7.490, 0.050),
+        (-7.993, 0.050),
+        (-8.653, 0.051),
+        (-8.898, 0.051),
+    ),
+}
+
 LAB46_DEPTH0 = (-8.709, 0.044)
 LAB46_FIT = {"c0": (0.259, 0.044), "c1": (0.416, 0.068), "s": (0.934, 0.108)}
 
