@@ -82,6 +82,7 @@ SLOW = {
     "lab42_dmrg_excited.py": 150,
     "lab44_noise_aware_on_qpu.py": 150,
     "lab45_perbond_mps.py": 400,
+    "lab46_hardware_noise_budget.py": 120,
 }
 SUMMARY = re.compile(r"All (\d+) (?:check|file)")
 
