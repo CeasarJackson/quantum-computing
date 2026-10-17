@@ -47,6 +47,26 @@ layer. The mirror gave lambda = 0.0036 (0.0034 .. 0.0038), the same as Lab 17
 on other qubits, so the per-gate noise of the model is right. The depth-1
 sign-flip gap did not repeat (+0.021 +/- 0.074 against +0.208 +/- 0.103).
 
+LIMITATIONS of the model and of what the live run shows
+-------------------------------------------------------
+  * One device, one chain of six qubits, one job per measurement. Lab 44 and
+    Lab 46 ran on different days; drift between calibrations is not measured,
+    and a common offset between the two jobs would be absorbed into c0 / c1.
+  * The noise model is per-CNOT depolarizing only. Coherent over-rotation,
+    amplitude damping, crosstalk, correlated readout error and leakage are
+    NOT modelled, and readout is corrected by independent per-qubit
+    attenuation only.
+  * Mirror circuits (U then U-dagger) measure INCOHERENT error per gate.
+    Coherent errors largely cancel there, so lambda = 0.0036 says nothing
+    about them; it does not rule them out as the source of the step.
+  * The three-part fit c0 + c1*[depth >= 1] + s*model was chosen AFTER the
+    data were seen (nine points, three parameters). chi-squared 8.5 for 6
+    degrees of freedom shows it is consistent with the data, not that the
+    step is a separate mechanism; the 6-sigma size of c1 holds only inside
+    that parametrisation. The cause of the step is unknown.
+  * Error bars are shot noise only (sampling variance plus the attenuation
+    correction as written); they contain no allowance for calibration drift.
+
 The lab claims only what its checks test: the recorded-data fit, the circuit
 structure, the estimator and calibration on simulators. What the machine does
 is REPORTED, not asserted.
