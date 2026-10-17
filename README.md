@@ -5,7 +5,7 @@ hardware-style decoder costs, plus a reproducible robustness study of a
 variational quantum classifier.**
 
 Every lab is a standalone Python script that *predicts, measures, and checks*:
-it prints PASS/FAIL for each claim it makes (about 1,150 checks in total), so
+it prints PASS/FAIL for each claim it makes (about 1,165 checks in total), so
 the results below are tested, not just stated.
 
 Author: Dr. Ceasar Jackson Jr.
@@ -62,6 +62,10 @@ python labs/pennylane_phase2_robustness.py --dry-run   # validate the study desi
 Tested with Python 3.13, Qiskit 2.5, PennyLane 0.45. The real-hardware labs
 (11, 15, 17, 44, 46, 48) run in dry-run mode on a simulated device unless given `--live`;
 live runs read the IBM API key **only** from an environment variable.
+
+GitHub Actions (`.github/workflows/ci.yml`) installs the pinned requirements and runs
+`python labs/run_all.py --skip-slow` on every push and pull request to `main`. It uses no
+secrets, so the hardware labs only ever run in dry-run mode there.
 
 ## Repository layout
 
