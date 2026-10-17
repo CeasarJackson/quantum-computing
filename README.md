@@ -1,11 +1,11 @@
 # Quantum Computing Labs
 
-**47 self-checking labs, from a single qubit to quantum error mitigation and
+**48 self-checking labs, from a single qubit to quantum error mitigation and
 hardware-style decoder costs, plus a reproducible robustness study of a
 variational quantum classifier.**
 
 Every lab is a standalone Python script that *predicts, measures, and checks*:
-it prints PASS/FAIL for each claim it makes (about 1,100 checks in total), so
+it prints PASS/FAIL for each claim it makes (about 1,150 checks in total), so
 the results below are tested, not just stated.
 
 Author: Dr. Ceasar Jackson Jr.
@@ -60,14 +60,14 @@ python labs/pennylane_phase2_robustness.py --dry-run   # validate the study desi
 ```
 
 Tested with Python 3.13, Qiskit 2.5, PennyLane 0.45. The real-hardware labs
-(11, 15, 17, 44, 46) run in dry-run mode on a simulated device unless given `--live`;
+(11, 15, 17, 44, 46, 48) run in dry-run mode on a simulated device unless given `--live`;
 live runs read the IBM API key **only** from an environment variable.
 
 ## Repository layout
 
 | Path | Contents |
 |---|---|
-| `labs/lab01_*.py` … `lab47_*.py` | The labs, one topic each (full index: [course-index.md](course-index.md)) |
+| `labs/lab01_*.py` … `lab48_*.py` | The labs, one topic each (full index: [course-index.md](course-index.md)) |
 | `labs/ex01_*.py` … `ex10_*.py` | Optional exercises |
 | `labs/mpslib.py`, `labs/dmrgx.py`, `labs/pbmps.py`, `labs/fezdata.py`, `labs/noiselib.py` | Shared MPS/DMRG (with symmetries and excited states), per-bond ansatz, recorded ibm_fez data, and noise/mitigation libraries |
 | `labs/PennyLane.py`, `labs/pennylane_*.py` | The classifier and its evaluation and analysis scripts |

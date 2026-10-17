@@ -96,6 +96,13 @@ RUNNING_SECONDS = 16.0
 # 62 s (queued 219 s). The seconds per shot differ by 2.6x between the two.
 RUNS = ((20, 2000, 16.0), (15, 4000, 62.0))
 
+# Lab 46 live result (ibm_fez, 2026-10-17, job db9lmkgc77vs7381mdv0 not stored
+# here): the depth-0 energy and the three-part refit of all nine energies,
+#     loss = c0 + c1 * [depth >= 1] + s * (modelled loss).
+# Lab 48 turns these into predictions fixed BEFORE its own run.
+LAB46_DEPTH0 = (-8.709, 0.044)
+LAB46_FIT = {"c0": (0.259, 0.044), "c1": (0.416, 0.068), "s": (0.934, 0.108)}
+
 
 def shortfalls(chain, lam):
     """(model, measured, sigma) shortfalls from the noiseless energy, 6 circuits."""
