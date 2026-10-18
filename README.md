@@ -71,7 +71,7 @@ secrets, so the hardware labs only ever run in dry-run mode there.
 
 | Path | Contents |
 |---|---|
-| `labs/lab01_*.py` … `lab59_*.py` | The labs, one topic each (full index: [course-index.md](course-index.md)) |
+| `labs/lab01_*.py` … `lab61_*.py` | The labs, one topic each (full index: [course-index.md](course-index.md)) |
 | `labs/ex01_*.py` … `ex10_*.py` | Optional exercises |
 | `labs/mpslib.py`, `labs/dmrgx.py`, `labs/pbmps.py`, `labs/fezdata.py`, `labs/noiselib.py` | Shared MPS/DMRG (with symmetries and excited states), per-bond ansatz, recorded ibm_fez data, and noise/mitigation libraries |
 | `labs/PennyLane.py`, `labs/pennylane_*.py` | The classifier and its evaluation and analysis scripts |
