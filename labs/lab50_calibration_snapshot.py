@@ -40,6 +40,21 @@ the calibration data do not contain (coherent error, crosstalk between the
 three parallel gates, state-dependent error), which a per-link singlet test
 could separate; in between, it explains part.
 
+FIRST LIVE READ (ibm_fez, calibration time 2026-10-17 20:56 -04:00, about 80
+minutes before the Lab 49 job): the six qubits sit on GOOD links. CZ error
+0.0018, 0.0021, 0.0020, 0.0021, 0.0017 (better than 88%, 76%, 80%, 74%, 93% of
+the 176 links; device median 0.0026), gate time 68 ns, sx error 0.00017 to
+0.00034, T1 78 to 180 us, T2 47 to 125 us, readout error 0.006 to 0.020. The
+calibration implies a depth-0 loss of 0.036 (singlet CZ 0.022 + sx 0.014),
+13% of the 0.283 +/- 0.033 left for the gates, so by the rule fixed beforehand
+the reported link errors do NOT explain it, and the layout is not the problem:
+the cheapest chain on the device would save 9% of the CZ error (0.0319 against
+0.0350). The calibration CZ error (0.2%) is also below the 0.36% per gate of the
+mirror benchmark. So the depth-0 loss is 10 to 15 times what the reported gate
+errors give, and something in the actual circuit is not in the calibration
+data (initial-state excitation, crosstalk between the three parallel gates, or
+a state-dependent or coherent error).
+
 LIMITATIONS: the calibration is a snapshot (its timestamp is printed) taken
 before or after the Lab 46, 48 and 49 jobs, not during them; calibration CZ
 errors are average gate infidelities from randomized benchmarking, which sees
