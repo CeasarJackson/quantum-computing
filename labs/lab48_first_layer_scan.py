@@ -66,6 +66,16 @@ readout-correction errors and are NOT independent experiments):
     (reverse "agrees with GRADUAL" at p = 0.04) are borderline, not evidence.
   The check below ("recorded live runs") reproduces these numbers offline.
 
+WHICH MECHANISM? The noiseless state is a spin singlet at every k, so the
+three measurement bases carry the same energy, free/3 each. Depolarizing noise
+(and a readout error that does not depend on the basis) takes the SAME amount
+from all three. Amplitude damping (T1) takes more from the Z basis, and pure
+dephasing takes far more from X and Y. A coherent over-rotation of the whole
+bond gate keeps the three equal but makes the loss oscillate instead of
+growing. `--retrieve` therefore prints the loss per basis, the asymmetry
+A = loss_Z - (loss_X + loss_Y) / 2, and the slope of A against the extra loss
+beyond the model, to compare with the simulated signatures printed by the lab.
+
 The lab claims only what its checks test: the circuit builder against an ideal
 simulator, the noise model against Lab 21, the two predictions, and the
 verdict logic on synthetic data. What the machine does is REPORTED, not
@@ -150,12 +160,15 @@ try:
         NoisyChain,
         bond,
         bond_gate,
+        I2,
         depolarize,
         singlets,
+        site,
     )
     from lab44_noise_aware_on_qpu import (
         BASES,
         attenuation,
+        basis_value,
         calibration_circuits,
         energy_from_counts,
         run_ideal,
@@ -515,6 +528,183 @@ def check_recorded(r, ctx):
 # ----------------------------------------------------------------------------
 # Analysis of a finished run
 # ----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
+# Which mechanism? Signatures in the X, Y and Z bases
+# ----------------------------------------------------------------------------
+# Sum over bonds of one Pauli pair, for each measurement basis.
+PAIR_SUMS = {
+    p: sum(site(N, p, q) @ site(N, p, q + 1) for q in range(N - 1)) for p in "XYZ"
+}
+
+
+def one_qubit_channel(rho, kraus, qubits):
+    """Apply the same single-qubit Kraus channel to each listed qubit."""
+    for q in qubits:
+        out = 0
+        for kop in kraus:
+            full = np.array([[1.0 + 0j]])
+            # Qubit 0 is the rightmost factor, as everywhere in this course.
+            for j in reversed(range(N)):
+                full = np.kron(full, kop if j == q else I2)
+            out = out + full @ rho @ full.conj().T
+        rho = out
+    return rho
+
+
+def amplitude_damping(g):
+    """Kraus pair for T1-type decay with probability g."""
+    return [
+        np.array([[1, 0], [0, np.sqrt(1 - g)]], dtype=complex),
+        np.array([[0, np.sqrt(g)], [0, 0]], dtype=complex),
+    ]
+
+
+def dephasing(p):
+    """Kraus pair for a Z error with probability p."""
+    return [
+        np.sqrt(1 - p) * I2,
+        np.sqrt(p) * np.array([[1, 0], [0, -1]], dtype=complex),
+    ]
+
+
+def mechanism_totals(kind, strength, order=ORDERS["forward"]):
+    """Per k, the sum over bonds of <XX>, <YY>, <ZZ> with ONE extra mechanism.
+
+    kind: depol (two-qubit depolarizing), ampdamp, dephase, or coherent (every
+    bond angle scaled by 1 + strength). No other noise is applied.
+    """
+    chain = NoisyChain(N)
+    rho = np.outer(chain.psi0, chain.psi0.conj())
+    rows = []
+    for k in KS:
+        if k:
+            q = order[k - 1]
+            scale = 1 + strength if kind == "coherent" else 1.0
+            u = expm(-1j * gate_angle(q) * scale * bond(N, q))
+            rho = u @ rho @ u.conj().T
+            if kind == "depol":
+                rho = depolarize(rho, N, q, 1 - strength)
+            elif kind == "ampdamp":
+                rho = one_qubit_channel(rho, amplitude_damping(strength), (q, q + 1))
+            elif kind == "dephase":
+                rho = one_qubit_channel(rho, dephasing(strength), (q, q + 1))
+        rows.append([float(np.trace(rho @ PAIR_SUMS[b]).real) for b in "XYZ"])
+    return np.array(rows)
+
+
+def asymmetry(delta):
+    """A = loss_Z - (loss_X + loss_Y) / 2 for rows of (dX, dY, dZ)."""
+    return delta[..., 2] - (delta[..., 0] + delta[..., 1]) / 2
+
+
+def signatures(strength=0.004):
+    """For each mechanism: asymmetry per unit of total loss at k = 5, small strength."""
+    base = mechanism_totals("depol", 0.0)
+    out = {}
+    for kind in ("depol", "ampdamp", "dephase", "coherent"):
+        delta = mechanism_totals(kind, strength) - base
+        loss = delta.sum(axis=1)
+        out[kind] = (
+            float(asymmetry(delta)[-1] / loss[-1]) if abs(loss[-1]) > 1e-9 else 0.0,
+            loss,
+        )
+    return out
+
+
+def check_signatures(r):
+    """The simulated signatures that the live per-basis report is compared with."""
+    log.info("=== Check 6: signatures of the candidate mechanisms ===")
+    sig = signatures()
+    for kind, (ratio, loss) in sig.items():
+        log.info(
+            "  %-8s A/loss at k=5: %+.2f; total loss by k: %s",
+            kind,
+            ratio,
+            np.round(loss, 3),
+        )
+    r.append(
+        check(
+            abs(sig["depol"][0]) < 1e-9, "depolarizing: equal loss in X, Y, Z (A = 0)"
+        )
+    )
+    r.append(
+        check(
+            sig["ampdamp"][0] > 0.1, "amplitude damping: more loss in Z (A/loss > 0.1)"
+        )
+    )
+    r.append(
+        check(
+            sig["dephase"][0] < -0.2, "dephasing: more loss in X and Y (A/loss < -0.2)"
+        )
+    )
+    coh = mechanism_totals("coherent", 0.03) - mechanism_totals("depol", 0.0)
+    r.append(
+        check(
+            float(np.abs(asymmetry(coh)).max()) < 1e-9,
+            "coherent over-rotation keeps X, Y, Z equal",
+        )
+    )
+    cl = coh.sum(axis=1)
+    r.append(
+        check(bool(np.any(np.diff(cl) < -1e-3)), "coherent loss is not monotone in k")
+    )
+
+
+def basis_report(ctx, by_key, atten, free, mloss, excess):
+    """Loss per basis, the asymmetry A, and its slope against the extra loss."""
+    log.info("loss per basis (measured - free/3), asymmetry A = Z - (X+Y)/2:")
+    a_val, a_err = [], []
+    for k in KS:
+        vals = {b: basis_value(by_key[(k, b)], atten) for b in "XYZ"}
+        delta = np.array([vals[b][0] - free[k] / 3 for b in "XYZ"])
+        se = np.array([vals[b][1] for b in "XYZ"])
+        a = float(asymmetry(delta))
+        ea = math.sqrt(se[2] ** 2 + (se[0] ** 2 + se[1] ** 2) / 4)
+        a_val.append(a)
+        a_err.append(ea)
+        log.info(
+            "  k=%d  dX %+.3f  dY %+.3f  dZ %+.3f  (+/- %.3f)   A = %+.3f +/- %.3f (%+.1f sigma)",
+            k,
+            delta[0],
+            delta[1],
+            delta[2],
+            se.mean(),
+            a,
+            ea,
+            a / ea,
+        )
+    a_val, a_err = np.array(a_val), np.array(a_err)
+    # Slope of A against the extra loss, through the origin (no extra loss, no A).
+    w = 1 / a_err**2
+    slope = float((w * a_val * excess).sum() / (w * excess**2).sum())
+    eslope = float(1 / math.sqrt((w * excess**2).sum()))
+    chi = float((w * (a_val - slope * excess) ** 2).sum())
+    log.info(
+        "A against the extra loss (through 0): slope %+.3f +/- %.3f (%+.1f sigma), chi2 %.1f (%d dof)",
+        slope,
+        eslope,
+        slope / eslope,
+        chi,
+        len(KS) - 1,
+    )
+    sig = signatures()
+    log.info(
+        "simulated A/loss: depolarizing %+.2f, amplitude damping %+.2f, dephasing %+.2f",
+        sig["depol"][0],
+        sig["ampdamp"][0],
+        sig["dephase"][0],
+    )
+    if abs(slope) < 2 * eslope:
+        text = (
+            "symmetric in X, Y, Z: depolarizing-like or basis-independent readout loss"
+        )
+    elif slope > 0:
+        text = "more loss in Z: amplitude-damping-like (T1)"
+    else:
+        text = "more loss in X and Y: dephasing-like"
+    log.info("verdict on the mechanism: the extra loss is %s", text)
+
+
 def analyse(r, ctx, keys, counts, backend_name, dry):
     """Energies, excess loss per gate, both stories, the free fit and a verdict."""
     where = "simulated device" if dry else "REAL HARDWARE"
@@ -593,8 +783,9 @@ def analyse(r, ctx, keys, counts, backend_name, dry):
         len(KS) - 3,
     )
     log.info("verdict: the scan %s", verdict(chi_s, chi_g, len(KS)))
+    basis_report(ctx, by_key, atten, free, mloss, excess)
     if dry:
-        log.info("(dry run: that verdict is about the simulator, not ibm_fez)")
+        log.info("(dry run: those verdicts are about the simulator, not ibm_fez)")
 
 
 def summarise(r):
@@ -693,8 +884,9 @@ def main(argv=None):
     check_models(r, ctx)
     check_predictions(r, ctx)
     check_recorded(r, ctx)
+    check_signatures(r)
 
-    log.info("=== Check 6: connect and choose a backend ===")
+    log.info("=== Check 7: connect and choose a backend ===")
     service, secret = connect(args)
     if isinstance(service, str):
         return 2
@@ -705,7 +897,7 @@ def main(argv=None):
         return 1
     log.info("backend %s: %d qubits", backend.name, backend.num_qubits)
 
-    log.info("=== Check 7: transpile onto one set of physical qubits ===")
+    log.info("=== Check 8: transpile onto one set of physical qubits ===")
     keys, circuits = build_jobs(ctx["order"])
     isa, used = transpile_all(backend, circuits, layout)
     log.info("physical qubits used (same for every circuit): %s", used)
@@ -723,7 +915,7 @@ def main(argv=None):
     log.info("two-qubit gates: %s (expected %s)", twoq, want)
     r.append(check(twoq == want, "no gate cancelled and no routing overhead"))
 
-    log.info("=== Check 8: run %d circuits x %d shots ===", len(isa), args.shots)
+    log.info("=== Check 9: run %d circuits x %d shots ===", len(isa), args.shots)
     plan_time(args.shots)
     if args.live:
         log.warn_("LIVE: this uses real QPU time. cap=%d s", args.max_seconds)
@@ -757,7 +949,7 @@ def main(argv=None):
         return 1
     result = job.result()
 
-    log.info("=== Check 9: results ===")
+    log.info("=== Check 10: results ===")
     counts = [result[i].data.meas.get_counts() for i in range(len(isa))]
     r.append(
         check(
