@@ -54,6 +54,28 @@ bond, summed over the three singlet bonds and the three bases; positive = lost):
            diff < -3 sigma: a single link loses MORE, unexpected.
   The per-link table shows whether one link carries the loss.
 
+FIRST LIVE RUN (ibm_fez, 2026-10-17 22:41, same six qubits, 32 s from queue to
+done, 17 circuits x 4000 shots): the loss is local to each singlet-preparation
+gate; it is neither initial-state excitation nor crosstalk.
+  * CONTROL passed: the plain arm gave X 0.149, Y 0.131, Z 0.093 (+/- 0.026)
+    against Lab 48 0.111, 0.148, 0.054: within 3 sigma in every basis.
+  * HERALD: loss 0.343 +/- 0.018 plain, 0.285 +/- 0.017 heralded (96.5% of
+    shots kept). Gain 0.058 +/- 0.025 (2.3 sigma, 17% of the plain loss):
+    below the 3 sigma line, so the rule says NOT an initial-state effect. The
+    gain is about the 0.04 the small-p bookkeeping predicted, so a minor
+    initial-excitation share is possible, but it is not the bulk.
+  * CROSS: the three singlets one at a time sum to 0.321 +/- 0.018 against
+    0.343 plain: difference +0.023 +/- 0.025, so NOT crosstalk.
+  * Asymmetry A = Z - (X+Y)/2: plain -0.055, herald -0.046, singles -0.056,
+    the Lab 48 sign, and it survives heralding and isolation.
+  * Per link (X+Y+Z): link 0 (qubits 129-118) 0.056 +/- 0.010, link 1
+    (109-110) 0.140 +/- 0.011, link 2 (111-112) 0.125 +/- 0.010. Link 0 loses
+    less than half of the others (about 5 sigma), which the reported CZ
+    errors (0.0018 to 0.0021) do not explain.
+  About 0.29 of the 0.34 therefore remains: state-dependent or coherent error
+  inside each singlet-preparation gate sequence (or a difference between
+  qubits), local to each link, invisible to mirror benchmarks.
+
 LIMITATIONS: one device and one job; the heralding measurement adds a
 mid-circuit measurement (about 1.5 us) before the gates, and a qubit measured
 as 0 is not a perfect |0> (the measurement error is small, about 1%, so about
