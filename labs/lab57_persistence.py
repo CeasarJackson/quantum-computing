@@ -53,6 +53,37 @@ have been refreshed in between (the lab prints each backend's calibration time);
 the same shot noise as Lab 55 (about 0.02 per link); one repeat only, so it cannot
 separate a slow drift from random jumps.
 
+FIRST LIVE RUN (2026-10-18 03:39; the 24 links of Lab 55, one job per backend,
+40 circuits x 2000 shots, 41 s of running time for the first job, all three done
+within 45 s; about 1 h 50 min to 2 h 20 min after the first runs, and after the
+02:10 to 02:20 calibration refresh). The rule printed:
+  Spearman rho of repeat against run 1 = +0.95 (p < 0.0001, n = 13 links with both
+  attenuations >= 0.95 in both runs)  ->  PERSISTENT: the order of the links
+  repeats; the loss is a stable property of the link that the calibration does not
+  report. CHI2 1.39 (differences about the size of the shot noise). SHIFT of the
+  mean, repeat minus run 1: -0.017 +/- 0.007 (2.4 sigma lower). HIGH: 4 of the 5
+  links HIGH in run 1 are HIGH again; 0 of the 8 others became HIGH.
+Per-link reading (NOT pre-registered; read off the printed table):
+  - Persistent HIGH links: fez 145-146 (0.075 -> 0.080), fez 66-67 (0.151 -> 0.121),
+    fez 13-14 (0.154 -> 0.086), kingston 105-106 (0.111 -> 0.099), marrakesh 43-56
+    (0.165 -> 0.143). The calibration implies 0.010 to 0.023 for them.
+  - Two exceptions among the links HIGH in run 1: marrakesh 60-61 (0.175 +/- 0.022
+    -> 0.032 +/- 0.030, a drop of 3.9 sigma) and kingston 148-149 (0.051 -> 0.031,
+    now CONSISTENT). So a link can lose its excess between runs; this is the
+    reason CHI2 is above 1 and not at 1.
+  - marrakesh 66-67 was UNPHYSICAL in run 1 (loss -0.368, readout attenuation
+    0.63); the repeat reads +0.127 +/- 0.023 (HIGH), as expected once the readout
+    is better (it is outside the n = 13 set because of run 1).
+  - kingston 14-15 (reported CZ error 0.036, implied 0.148) is BELOW the implied
+    loss in both runs (-0.020, -0.005), the same way as before.
+READING: the excess is mostly a persistent property of a link, not run-to-run
+shot or drift noise; it is NOT visible in the reported calibration (Lab 56), so
+the calibration is missing a stable per-link quantity. The shift of -0.017 and
+the two links that lost their excess say that a part of it also moves slowly
+(hours); this lab cannot say whether that is the calibration refresh in between
+or drift. Not tested: whether the persistent links stay HIGH over days, and what
+property of the link they share.
+
 Modes
 -----
   (default)  DRY RUN on simulated links (no account, no network): tests the
