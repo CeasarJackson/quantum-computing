@@ -52,6 +52,25 @@ e1 = L(E1000) - L(E0), e2 = L(E2000) - L(E0).
           preparation loss; 0.15 to 0.5 : part; < 0.15 : not the main cause
           (the preparation loss is then in the gates themselves).
 
+FIRST LIVE RUN (ibm_fez, 2026-10-17 23:56, same six qubits, 42 s from queue to
+done, 56 circuits x 2000 shots): the idle loss is real but it is NOT the cause
+of the preparation loss.
+  * SHAPE: f1 = 0.100 +/- 0.014, f2 = 0.204 +/- 0.015, r = 2.04 +/- 0.32:
+    LINEAR in t, white (Markovian) dephasing, not a constant frequency
+    difference.
+  * ECHO: e1 = 0.071 +/- 0.014, e2 = 0.121 +/- 0.014, q = 0.60 +/- 0.08: the
+    echo helps PARTLY (removes about 40% of the free-idle loss). The echoed idle
+    is within 3 sigma of the dephasing the reported echo T2 predicts (0.071
+    against 0.049), so the part the echo cannot remove follows the calibration;
+    the part it removes is the excess that Lab 52 found over the reported T2.
+  * PULSE: the two X gates cost -0.005 +/- 0.013: nothing.
+  * PREP: the singlet is scheduled for 116 ns; the free-idle rate (linear)
+    gives 0.012 over that time, 11% of the preparation loss L(F0) = 0.107 +/-
+    0.009: idle-type dephasing is NOT the main cause, so about 0.095 of the
+    preparation loss is in the gates themselves.
+  Per-link numbers are in the log; link 0 again has the smallest F0 (0.080
+  against 0.124 and 0.118).
+
 LIMITATIONS: one device and one job; the free-idle rate is a proxy for what the
 qubits do while being gated (a driven qubit is not an idling one), so PREP is an
 estimate, not a measurement; the echo cancels only frequency differences that
