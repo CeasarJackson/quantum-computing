@@ -76,6 +76,45 @@ more, which no state can have. So the analysis was amended:
 For reference, the six ibm_fez qubits of Labs 51 to 54 gave a mean loss per link
 of 0.10 to 0.11 against an implied 0.012 (R about 9).
 
+FIRST LIVE RUNS (2026-10-18; 40 circuits x 2000 shots each; ibm_kingston 00:34,
+queued 805 s, then 31 s; ibm_marrakesh 01:18, 37 s; ibm_fez 01:19, still queued
+after 15 min and done by 02:16; the ibm_fez links are eight fresh ones, not the Lab 51 to 54 chain).
+As printed by the rules fixed above:
+  ibm_kingston   R 0.8   excess -0.005 +/- 0.005   AGREES   (TREND: OFFSET)
+  ibm_marrakesh  R -0.0  excess -0.023 +/- 0.009   AGREES   (TREND: SCALES)
+  ibm_fez        R 3.1   excess +0.048 +/- 0.007   the gap exists on this device
+                                                    too      (TREND: OFFSET)
+The two AGREES verdicts and all three TREND verdicts are NOT reliable evidence.
+The TREND fits contradict one another (negative k on kingston, negative c on
+marrakesh), and the mean over the eight links is dominated by links where the
+readout correction fails or the calibration is wrong: marrakesh 66-67 has
+alpha 0.96/0.63 (qubit 67 read 25% of |0> as 1 and 12% of |1> as 0, against a
+reported readout error under 0.06), correlators corrected down to -1.30 and a
+loss of -0.37 +/- 0.08; kingston 14-15 has a reported CZ error of 0.036, so it
+alone lifts the mean implied loss from 0.017 to 0.032, and it lost nothing
+(-0.020 +/- 0.021). The rule was badly built: a mean over links cannot tell
+"every link a little off" from "some links very bad", and it counts links whose
+readout correction fails.
+The amended per-link reading (post hoc, labelled above): kingston 2 HIGH, 5
+CONSISTENT, 1 BELOW; marrakesh 2 HIGH, 5 CONSISTENT, 1 UNPHYSICAL; fez 3 HIGH, 5
+CONSISTENT. All seven HIGH links have both readout attenuations alpha >= 0.93
+(six have both >= 0.97), so for them the correction is small and the excess is
+not a readout artefact (kingston 148-149: raw loss 0.078, corrected 0.051, implied
+0.010). Taking the 15 links with both alpha >= 0.95 (a cut chosen after seeing the
+unphysical values, from the readout calibration circuits alone; the same links at
+0.93): 14 of 15 lose more than the calibration implies, mean 0.074 against 0.030
+(R 2.5, excess +0.044 +/- 0.005). Setting aside kingston 14-15, the one link that
+lost nothing, 14 of 14 are above: mean 0.081 against 0.021 (R 3.8, +0.059 +/-
+0.005); by device R 4.5 (marrakesh, 4 links), 3.4 (fez, 5) and about 3.5
+(kingston, 5). READING: the loss above the calibration is not specific to the six
+ibm_fez qubits or to ibm_fez; it is present on well-read links of all three
+156-qubit devices, at about 3 to 4 times the implied loss (the Lab 51 to 54 chain
+is 9 times). It is heterogeneous: 6 of the 15 good-readout links are 3 sigma or
+more above implied (0.05 to 0.17), 8 are within 3 sigma, and the reported CZ
+error does not tell which (HIGH links were reported at 0.0013 to 0.0054). Still
+open: whether anything in the calibration (T1, T2, readout, neighbours) predicts
+the HIGH links, and why a link's loss is so unlike its reported error.
+
 LIMITATIONS: one device and one job per run; the links come from the calibration
 at the time of the run; the preparation here is the same singlet circuit as Labs
 51 to 54 (H, CX as H-CZ-H, Z, X), transpiled for each pair; shot-noise error bars
