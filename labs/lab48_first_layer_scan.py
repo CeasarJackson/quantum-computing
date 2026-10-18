@@ -76,6 +76,18 @@ growing. `--retrieve` therefore prints the loss per basis, the asymmetry
 A = loss_Z - (loss_X + loss_Y) / 2, and the slope of A against the extra loss
 beyond the model, to compare with the simulated signatures printed by the lab.
 
+FIRST PER-BASIS RESULT (the same two jobs, retrieved afterwards, no QPU time):
+the extra loss is symmetric in X, Y and Z. A against the extra loss is +0.008
++/- 0.026 (forward) and -0.040 +/- 0.027 (reverse); pooled -0.015 +/- 0.019,
+against +0.22 for amplitude damping and -0.44 for dephasing. So T1 or pure
+dephasing cannot be the main cause (each at most about 10% of the loss). The
+growth per gate is the same in all three bases (0.034, 0.032, 0.041 +/- 0.006),
+about 0.11 per gate in total against the model's 0.06. Two features remain
+that the simulated mechanisms do not make: Y loses about 0.10 +/- 0.013 more
+than X at every k >= 1 (shot noise only), and at depth 0 Z loses less than X
+and Y (A = -0.076 +/- 0.022). Both point at the measurement itself (basis
+change, correlated readout error) as much as at the gates.
+
 The lab claims only what its checks test: the circuit builder against an ideal
 simulator, the noise model against Lab 21, the two predictions, and the
 verdict logic on synthetic data. What the machine does is REPORTED, not
@@ -141,7 +153,10 @@ try:
     from fezdata import (
         ANGLES,
         LAB46_FIT,
+        BASIS_SE,
+        EXCESS48,
         LAB48,
+        LAB48_BASIS,
         LAMBDA_FEZ,
         LAYOUT,
         RUNS,
@@ -648,6 +663,73 @@ def check_signatures(r):
     r.append(
         check(bool(np.any(np.diff(cl) < -1e-3)), "coherent loss is not monotone in k")
     )
+
+    check_basis_recorded(r)
+
+
+def wmean(v, sd):
+    """Weighted mean and its error."""
+    w = 1 / np.asarray(sd) ** 2
+    return float((w * v).sum() / w.sum()), float(1 / math.sqrt(w.sum()))
+
+
+def check_basis_recorded(r):
+    """The per-basis numbers retrieved from the two live jobs, analysed offline."""
+    log.info("--- the recorded per-basis loss of the two live runs ---")
+    se = np.array(BASIS_SE)
+    d = np.array([LAB48_BASIS["forward"], LAB48_BASIS["reverse"]])  # (run, k, XYZ)
+    asym = asymmetry(d)
+    ea = np.sqrt(se**2 + se**2 / 2)
+    x = np.concatenate([EXCESS48["forward"], EXCESS48["reverse"]])
+    w = 1 / np.tile(ea, 2) ** 2
+    slope = float((w * asym.reshape(-1) * x).sum() / (w * x * x).sum())
+    eslope = float(1 / math.sqrt((w * x * x).sum()))
+    log.info("A against the extra loss, both runs: %+.3f +/- %.3f", slope, eslope)
+    sig = signatures()
+    r.append(check(abs(slope) < 2 * eslope, "live A/loss is consistent with zero"))
+    r.append(
+        check(
+            (sig["ampdamp"][0] - slope) / eslope > 5,
+            "amplitude damping as main cause excluded (> 5 sigma)",
+        )
+    )
+    r.append(
+        check(
+            (slope - sig["dephase"][0]) / eslope > 5,
+            "dephasing as main cause excluded (> 5 sigma)",
+        )
+    )
+    # Growth per gate in each basis (k >= 1): a straight line per basis.
+    ks = np.tile(np.arange(1.0, 6.0), 2)
+    design = np.vstack([np.ones(10), ks]).T
+    sd = np.tile(se[1:], 2)
+    growth = []
+    for j, name in enumerate("XYZ"):
+        y = d[:, 1:, j].reshape(-1)
+        cov = np.linalg.inv(design.T @ (design / sd[:, None] ** 2))
+        beta = cov @ (design.T @ (y / sd**2))
+        growth.append((beta[1], math.sqrt(cov[1, 1])))
+        log.info("  %s: loss per gate %.4f +/- %.4f", name, *growth[-1])
+    spread = max(g[0] for g in growth) - min(g[0] for g in growth)
+    r.append(
+        check(
+            spread < 3 * math.hypot(growth[0][1], growth[1][1]),
+            "the growth per gate is the same in X, Y, Z",
+        )
+    )
+    # Y - X: none of the simulated mechanisms produces it.
+    yx = (d[:, :, 1] - d[:, :, 0])[:, 1:].reshape(-1)
+    m, e = wmean(yx, np.sqrt(2) * sd)
+    log.info(
+        "Y loses more than X at k >= 1: dY - dX = %+.3f +/- %.3f (%.1f sigma, shot noise only)",
+        m,
+        e,
+        m / e,
+    )
+    r.append(check(m / e > 5, "dY - dX is positive beyond 5 sigma"))
+    a0, e0 = wmean(asym[:, 0], np.full(2, ea[0]))
+    log.info("depth 0: A = %+.3f +/- %.3f (Z loses less than X, Y)", a0, e0)
+    r.append(check(a0 / e0 < -3, "at depth 0 Z loses less than X and Y (> 3 sigma)"))
 
 
 def basis_report(ctx, by_key, atten, free, mloss, excess):

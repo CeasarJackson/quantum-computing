@@ -124,6 +124,35 @@ LAB48 = {
     ),
 }
 
+# Lab 48 per-basis loss (ibm_fez, 2026-10-17, retrieved from the same two jobs):
+# for each k = 0..5, (dX, dY, dZ) = measured pair-sum in that basis minus the
+# noiseless value free/3, so positive = energy lost. Standard error of each
+# entry by k: BASIS_SE. The extra loss beyond the model, EXCESS48, is the
+# printed "excess" column of the scan.
+LAB48_BASIS = {
+    "forward": (
+        (0.118, 0.137, 0.067),
+        (0.133, 0.237, 0.162),
+        (0.178, 0.289, 0.245),
+        (0.212, 0.337, 0.292),
+        (0.219, 0.409, 0.297),
+        (0.224, 0.328, 0.354),
+    ),
+    "reverse": (
+        (0.104, 0.159, 0.040),
+        (0.132, 0.245, 0.187),
+        (0.143, 0.276, 0.172),
+        (0.245, 0.257, 0.239),
+        (0.287, 0.319, 0.324),
+        (0.287, 0.393, 0.303),
+    ),
+}
+BASIS_SE = (0.025, 0.027, 0.029, 0.029, 0.030, 0.030)
+EXCESS48 = {
+    "forward": (0.288, 0.439, 0.565, 0.647, 0.661, 0.598),
+    "reverse": (0.269, 0.472, 0.443, 0.547, 0.667, 0.676),
+}
+
 LAB46_DEPTH0 = (-8.709, 0.044)
 LAB46_FIT = {"c0": (0.259, 0.044), "c1": (0.416, 0.068), "s": (0.934, 0.108)}
 
