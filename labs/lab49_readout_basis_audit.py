@@ -60,6 +60,27 @@ loss but misses in some basis, they account for part; otherwise they do not,
 and the cause is on the gate side (the singlet-preparation gates), which is
 the next experiment. The audit cannot see gate error, by construction.
 
+FIRST LIVE RUN (ibm_fez, 2026-10-17 22:14, same six qubits, 26 s from queue to
+done, 12 circuits x 4000 shots): the verdict is that readout and basis rotation
+do NOT account for the depth-0 loss.
+  * Readout is independent: the pair attenuation equals the product of the
+    single-qubit values to within 0.0005 on every bond in every basis (all
+    within 0.2 sigma). The per-qubit attenuation in X and Y is 0.000 to 0.007
+    below the Z value the labs used (mean about 0.004).
+  * The Z-based correction leaves 0.027 +/- 0.006 (X) and 0.037 +/- 0.006 (Y)
+    of the 5.0 ordered pair-sum, and -0.004 +/- 0.005 (Z). Y minus X is only
+    +0.010 +/- 0.009, against +0.103 +/- 0.013 seen at k >= 1 in Lab 48, so the
+    Y > X gap is not a readout effect.
+  * Predicted depth-0 loss from readout plus the gate model: X 0.030, Y 0.025,
+    Z 0.007 (each +/- 0.007), against measured 0.111, 0.148, 0.054 (+/- 0.018):
+    4.2, 6.5 and 2.4 sigma short. In total 0.062 of the measured 0.312.
+  The remaining depth-0 loss, about 0.25 over three singlets (3% of each
+  singlet's correlation, against the 0.4% per two-qubit gate of the Lab 17
+  mirror benchmark), therefore comes from the singlet-preparation gates. Its
+  basis pattern (Z loses less, A = -0.076 +/- 0.022) points to phase-type
+  error (dephasing or a Z-axis error in the two-qubit gate) rather than
+  amplitude damping, which would make Z lose MORE.
+
 LIMITATIONS: one device, one chain, one job; the preparation needs one or two
 more single-qubit gates than the Lab 48 circuits (single-qubit errors are about
 0.03% on this device, small next to the effects searched for); readout error is
