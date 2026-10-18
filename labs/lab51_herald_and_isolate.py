@@ -379,11 +379,13 @@ def pauli_mix(rho, qubits, lam):
     """Two-qubit depolarizing with strength lam via the 15 Pauli errors."""
     if lam <= 0:
         return rho
-    acc = (1 - 16 * lam / 15) * rho.data
+    # Pauli errors of total probability 15 lam / 16 make rho -> (1-lam) rho + lam I/4.
+    lam_p = 15 * lam / 16
+    acc = (1 - lam_p) * rho.data
     for a in "IXYZ":
         for c in "IXYZ":
             if a + c != "II":
-                acc = acc + (lam / 15) * rho.evolve(Pauli(a + c), qargs=qubits).data
+                acc = acc + (lam_p / 15) * rho.evolve(Pauli(a + c), qargs=qubits).data
     return DensityMatrix(acc)
 
 
