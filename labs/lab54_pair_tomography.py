@@ -53,6 +53,27 @@ links; sigma is the bootstrap error of each number):
   ROTATION  for a coherent axis, the rotation angle e = 2 asin(m_k)
           (about the z, x or y axis of one qubit) is printed.
 
+FIRST LIVE RUN (ibm_fez, 2026-10-18 00:07, same six qubits, 41 s from queue to
+done, 29 circuits x 4000 shots): the error is INCOHERENT, a mixture of random
+flips, so no recalibration or compiler change can remove it.
+  * DECOMP, pooled over the three links: singlet fidelity F = 0.957 (0.964,
+    0.944, 0.962 by link, each +/- 0.005); triplet populations p_x = 0.012,
+    p_y = 0.007, p_z = 0.024 (each +/- 0.003). The Z-type triplet (a relative
+    phase flip between |01> and |10>) is again about twice the others. The
+    total non-singlet weight 0.043 is higher than the 0.029 the XX, YY, ZZ
+    correlators of Lab 51 gave (about 2 sigma); a small positive bias of
+    linear inversion with clipping, or drift between the jobs, may account
+    for it.
+  * COHER: |rho(S, T_k)| is 0.003 to 0.036, against sqrt(p_k) of 0.07 to 0.18
+    that a fully coherent error of the same size would give. Axis z is flagged
+    on links 0 and 1 (real parts 0.018 and 0.003, imaginary parts -0.020 and
+    -0.036, each +/- 0.006); axis x on links 1 and 2.
+  * SHARE: coherent weight over the non-singlet weight is 0.02 pooled (0.02,
+    0.03, 0.01 by link): INCOHERENT. What is coherent is small but has the
+    same sign on all three links: a z rotation of 0.05 to 0.07 rad (3 to 4
+    degrees) between the two qubits, worth a population of about 0.001.
+  So more than 95% of the preparation loss is random, with a Z-type excess.
+
 LIMITATIONS: one device and one job; linear inversion with clipping (a bias
 of order 1/sqrt(shots) in small populations; the bootstrap includes it only
 partly); the measured state includes the basis-change gates (single-qubit,

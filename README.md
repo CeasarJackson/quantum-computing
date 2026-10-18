@@ -60,7 +60,7 @@ python labs/pennylane_phase2_robustness.py --dry-run   # validate the study desi
 ```
 
 Tested with Python 3.13, Qiskit 2.5, PennyLane 0.45. The real-hardware labs
-(11, 15, 17, 44, 46, 48, 49, 50) run in dry-run mode on a simulated device unless given `--live`;
+(11, 15, 17, 44, 46, 48, 49, 50, 51, 52, 53, 54) run in dry-run mode on a simulated device unless given `--live`;
 live runs read the IBM API key **only** from an environment variable.
 
 GitHub Actions (`.github/workflows/ci.yml`) installs the pinned requirements and runs
@@ -71,7 +71,7 @@ secrets, so the hardware labs only ever run in dry-run mode there.
 
 | Path | Contents |
 |---|---|
-| `labs/lab01_*.py` … `lab50_*.py` | The labs, one topic each (full index: [course-index.md](course-index.md)) |
+| `labs/lab01_*.py` … `lab54_*.py` | The labs, one topic each (full index: [course-index.md](course-index.md)) |
 | `labs/ex01_*.py` … `ex10_*.py` | Optional exercises |
 | `labs/mpslib.py`, `labs/dmrgx.py`, `labs/pbmps.py`, `labs/fezdata.py`, `labs/noiselib.py` | Shared MPS/DMRG (with symmetries and excited states), per-bond ansatz, recorded ibm_fez data, and noise/mitigation libraries |
 | `labs/PennyLane.py`, `labs/pennylane_*.py` | The classifier and its evaluation and analysis scripts |
