@@ -62,6 +62,31 @@ the implied loss and would correlate with cz_err and sx_mean by construction):
   DEVICE      the mean excess per backend is printed beside the table, because a
               feature that differs between backends can mimic a device effect.
 
+FIRST LIVE RUN (2026-10-18 02:49; the 24 links of Lab 55 joined to calibrations read
+at 02:10 (ibm_fez), 02:17 (ibm_kingston) and 02:20 (ibm_marrakesh), i.e. after the
+jobs ran at 00:34 to 01:19; no CZ error had moved by more than 5%). The set is
+15 links (fez 5, kingston 6, marrakesh 4; mean excess +0.053, +0.007, +0.088).
+By the rules above: no feature ASSOCIATED, one SUGGESTIVE.
+  t2_min       rho -0.52  p 0.0485  SUGGESTIVE (shorter T2, more loss)
+  sx_mean      rho +0.52  p 0.0503  NONE (misses the SUGGESTIVE line by 0.0003)
+  t1_min       rho -0.16  p 0.58
+  cz_err       rho -0.02  p 0.95
+  ro_mean      rho -0.03  p 0.93
+  spectators   rho -0.03  p 0.91
+  worst_nb_cz  rho +0.07  p 0.79
+  implied      rho +0.08  p 0.78   (the benchmark)
+  cz_ns, f_diff   not testable: the backends report one CZ duration for these links
+                  and no qubit frequency in their target.
+SUMMARY: weak hints only. READING: the calibration's own implied loss does not rank
+these 15 links at all (rho +0.08), and neither does the reported CZ error
+(rho -0.02), so the extra loss is not a rescaling of the numbers the backend
+reports. The one hint is that links with the shorter T2 (and, just short of the
+line, the larger sx error) lose more, which would point at qubit quality and not
+gate quality. It is weak: with ten features tested, one p of 0.0485 is about what
+chance gives, T2 and sx error are probably correlated with each other, and the
+T2 was read after the runs. With n = 15 only a strong association could be seen.
+Not tested here: whether the HIGH links are the same links when measured again.
+
 LIMITATIONS: n is about 15 and the features are correlated with each other;
 the calibration is read when this lab runs, not when the jobs ran (the lab prints
 the calibration time and flags a CZ error that has changed since the links were
