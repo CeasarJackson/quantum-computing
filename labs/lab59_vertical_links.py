@@ -47,6 +47,31 @@ readout cut; one run, so a link that happens to lose its excess (Lab 57 found tw
 adds noise; the row partner is matched on the reported CZ error only, which Lab
 56 showed does not rank the loss.
 
+FIRST LIVE RUN (2026-10-18 05:50; ibm_fez job dba9ci1gv2cc73e6hkgg, ibm_kingston
+dba9ci8c77vs7382g4l0, ibm_marrakesh dba9cihgv2cc73e6hkh0; the first job ran 41 s,
+all three were done within 45 s, no queue wait). 8 of the 24 links failed the
+readout cut (fez 2, kingston 1, marrakesh 4 of its 8 incl. 3 of 4 vertical), so
+the groups are 8 vertical and 8 row links, and marrakesh adds only 1 vertical.
+The rule printed:
+  pooled vertical +0.024 (n = 8), row +0.022 (n = 8); D = +0.002 +/- 0.010 (0.2
+  sigma)  ->  NO DIFFERENCE: the two kinds of link lose alike (to this precision).
+  Detectable at 3 sigma: about 0.029 or more. Per backend D: fez +0.030 +/- 0.016,
+  kingston +0.005 +/- 0.016, marrakesh -0.033 +/- 0.023 (n = 1 vs 2).
+  HIGH: 2 of 8 vertical and 1 of 8 row links.
+Per-link reading (NOT pre-registered): the HIGH links are fez 118-129 (vertical,
++0.079 +/- 0.018, implied 0.012) and fez 29-38 (vertical, +0.090 +/- 0.023, implied
+0.018), and marrakesh 131-132 (row, +0.075 +/- 0.018, implied 0.011); the rest are
+within 3 sigma of the implied loss. Lab 58's lead, marrakesh 43-56 being the
+highest, does not generalise: it was one link. fez 118-129 is the first link of the
+original ibm_fez chain (qubits 129, 118, ...), which Lab 51 found to lose less
+than the others; here it is HIGH,
+so that "link 0 loses less" result does not reproduce either (one run).
+READING: links between chip rows do not lose more than row links at a 0.03
+difference (3 sigma); the stable per-link excess has no structural cause that this
+split can see. Not tested: other structure (distance to the chip edge, the number
+of neighbours of each qubit, which qubit of the pair has the larger T2), and the
+excess over days.
+
 Modes
 -----
   (default)  DRY RUN (no account, no network): the selection and the submit path on a
