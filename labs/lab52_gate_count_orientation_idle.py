@@ -57,6 +57,28 @@ CX on the singlet, averaged over the three links; a = the mean loss A.
 Readout is corrected with the Z-basis attenuation of the same job (Lab 49
 showed that is good to about 0.004 per qubit).
 
+FIRST LIVE RUNS (ibm_fez, 2026-10-17 23:04 and 23:09, same six qubits, 42 s
+each, 38 circuits x 3000 shots; two independent jobs of the same script):
+  * GATE COUNT: s = +0.0189 and +0.0172 (+/- 0.0014) per extra CX, summed over
+    X, Y, Z, against the model 3 lambda = 0.0111 and a mean preparation loss
+    a = 0.094 and 0.112. s is 1.6 times the model but only 17% of a, so the
+    rule says the loss is paid ONCE, in the preparation, not per gate: the
+    whole singlet costs about as much as 6 extra CX gates.
+  * ORIENT: D - A is within 2.1 sigma on every link in both jobs (largest
+    +0.036 +/- 0.017): the loss does NOT depend on which qubit carries the H.
+  * IDLE: the 1 us idle adds 0.11 to 0.16 per link against 0.03 to 0.06 predicted
+    from the reported T2; the mean excess is +0.092 +/- 0.011 and +0.086 +/-
+    0.011 (about 8 sigma each): the pair dephases 2.5 to 4 times faster than the
+    calibration T2 says. A singlet is immune to dephasing that is the same on
+    both qubits, so this is a difference between the two qubits (or a
+    free-evolution T2* shorter than the echo T2 that the calibration reports).
+  * LINKS: link 0 (129-118) loses less: gap to the mean of links 1 and 2
+    0.036 +/- 0.015 and 0.074 +/- 0.015 (mean 0.055 +/- 0.011), with Lab 51's
+    0.077: the link difference reproduces in sign in all three jobs.
+  What the run does not say: how much of the preparation loss (a = 0.10) is
+  idle-type dephasing during the sequence itself. The next test is a delay
+  scan with and without a mid-delay echo.
+
 LIMITATIONS: one device and one job; each variant isolates one change but the
 extra CX gates also carry their single-qubit gates (two sx per CX), so B
 measures the cost of a gate WITH its dressing; shot-noise error bars only (about
